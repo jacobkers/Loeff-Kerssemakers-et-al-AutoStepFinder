@@ -167,8 +167,9 @@ while initval.nextfile>0;
     'Color',[1,0.7,0]);                                                 %Color line RBG
     initval.MaxX=Time(end);                                             %Determine length X axis
     initval.MaxY=max(Data)*1.2;                                         %Determine length Y axis
+    initval.MinY=min(Data);                                         %Determine length Y axis
     xlim([0 initval.MaxX]);                                             %Set X axis
-    ylim([0 initval.MaxY]);                                             %Set Y axis
+    ylim([initval.MinY initval.MaxY]);                                             %Set Y axis
     xlabel('Time (s)','FontSize',12);                                   %Label X axis
     ylabel('Position (A.U.)','FontSize',12);                            %Label Y axis
     set(gca,'TickDir','out','TickLength',[0.003 0.0035],'box', 'off');  %Set ticks outslide plotting area, remove box plot
@@ -695,33 +696,33 @@ function FitX=Adapt_Fit(f,idx,FitX)
     i3=f(idx,3)+1; i4=f(idx,2);av2=f(idx,5);
     FitX(i1:i2)=av1; FitX(i3:i4)=av2;
               
- function [idx, avl, avr,rankit]=Splitfast(r)              %
-%this function alsoadresses a one-dim array 'rij'
+ function [idx, avl, avr,rankit]=Splitfast(Segment)              %
+%this function also adresses a one-dim array 'Segment'
 %and determines the best step-fit there
 %To save time, functions like 'mean' are avoided
-    w=length(r);     
+    w=length(Segment);     
     if w>3
 		Chisq=(1:w-1)*0;                           
-        AvL=r(1);    AvR=sum(r(2:w))/(w-1); AvAll=sum(r)/w;  
+        AvL=Segment(1);    AvR=sum(Segment(2:w))/(w-1); AvAll=sum(Segment)/w;  
         for t=2:w-2
-            AvL=(AvL*(t-1)+r(t))/t;     AvR=(AvR*(w-t+1)-r(t))/(w-t);
+            AvL=(AvL*(t-1)+Segment(t))/t;     AvR=(AvR*(w-t+1)-Segment(t))/(w-t);
             DStepL=AvL-AvAll;           DStepR=AvR-AvAll;
             DeltaChisq=((DStepL.^2)*t+(DStepR.^2)*(w-t));            
             Chisq(t)=-DeltaChisq;       
         end
          [~,idx]=min(Chisq(2:w-2)); idx=idx+1;
-         avl=mean(r(1:idx));                    avr=mean(r(idx+1:w));
+         avl=mean(Segment(1:idx));                    avr=mean(Segment(idx+1:w));
          %rankit=(avr-avl)^2/(1/(idx-1)+1/(w-idx-1));  %quantity expresing predicted accuracy step (squared)
          rankit=(avr-avl)^2*w;
     else                                            %low-limit cases
          rankit=0;               
          switch w
              case 3 
-                a=(r(2)+r(3))/2-r(1);            b=r(3)-(r(1)+r(2))/2;
-                cL=[r(1) , (r(1)+r(2))/2];      cR=[(r(2)+r(3))/2 , r(3)]; 
+                a=(Segment(2)+Segment(3))/2-Segment(1);            b=Segment(3)-(Segment(1)+Segment(2))/2;
+                cL=[Segment(1) , (Segment(1)+Segment(2))/2];      cR=[(Segment(2)+Segment(3))/2 , Segment(3)]; 
                 [~,idx]=max([a b]);    avl=cL(idx);  avr=cR(idx);
             case 2
-                idx=1;  avl=r(1); avr=r(2); 
+                idx=1;  avl=Segment(1); avr=Segment(2); 
         end
     end
 
@@ -1097,6 +1098,7 @@ figure('Name','S-Curve Evaluation','NumberTitle','off','units', 'normalized', 'p
     SmoothCurve2 = smooth(SCurveRound2, SmoothFact);
     xMaxCurve2 = Stepnumber(IdxMaxiCurve2);
     yMaxCurve2 = SmoothCurve2(IdxMaxiCurve2);
+    yMinCurve2 = min(IdxMaxiCurve2);
     plot(Stepnumber,SmoothCurve2,'k-');
     set(gca,'TickDir','out','TickLength',[0.003 0.0035],'box', 'off'); %Ticks outslide plotting area
     hold on;
@@ -1105,8 +1107,8 @@ figure('Name','S-Curve Evaluation','NumberTitle','off','units', 'normalized', 'p
     xlabel('Step Number');
     ylabel('S-Score');
     xlim([0 initval.fitrange]);
-    ylimCurve2 = yMaxCurve2*1.6;
-    ylim([0 ylimCurve2]);
+    ylimCurve2 = yMaxCurve2;
+    ylim([yMinCurve2 ylimCurve2]);
     hold on;
     if initval.SMaxTreshold > (yMaxCurve2)
         xtext=(max(initval.fitrange)/2);
