@@ -1,34 +1,36 @@
 Jacob Kerssemakers, Luuk Loeff, 2018
-packagage will be maintained on https://github.com/jacobkers/AutoStepFinder_StandAlone
+package will be maintained on https://github.com/jacobkers/AutoStepFinder_StandAlone
 ------------------------------------
+
 This directory contains:
 
-main code
----------------------
+main codeand manual
+-------------------------------------------------
 Stepfinder_with_gui.fig
 Stepfinder_with_gui.m
---------------------
+Stepfinder_manual.pdf
+----------------------------------------------
 
 
 testdata
----------------------
+-------------------------------------------------
 testdata_events_on_baseline.txt
 testdata_regular_steps.txt
 testdata_irregular_steps.txt
----------------------
+-----------------------------------------------
 
 extras
----------------------
-Stepfinder_core_section.m: a stripped-down, single-run stepfinder 
-for home editing,containing only essential parts plus an 
-auto-run-option that will show a multi-scale stepped trace.
+-----------------------------------------------------
+Stepfinder_auxiliary_code.m: contains useful code extras (see manual)
 
---------------------
 
 background; references
--------------------
-nature04928-s3.pdf:pdf file with theory as described in the original paper: 
-Supplemental material of 
-Kerssemakers et al, Nature. 2006 Aug 10;442(7103):709-12)
-Assembly dynamics of microtubules at molecular resolution.
---------------------
+-------------------------------------------------------------
+1. Luuk_Loeff_Thesis Chapter 6: thesis chapter describing the current version of the algorithm
+
+2. Kerssemakers_nature04928-s3.pdf:
+	pdf file with theory as described in the original paper: 
+	Supplemental material of 
+	Kerssemakers et al, Nature. 2006 Aug 10;442(7103):709-12)
+	Assembly dynamics of microtubules at molecular resolution.
+---------------------------------------------------------

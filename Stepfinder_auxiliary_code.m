@@ -1,4 +1,4 @@
-function AuxiliaryCode
+function Stepfinder_auxiliary_code
 %% Various useful functions to be used with the main Stepfinder code for Matlab users
 
 
