@@ -1,15 +1,24 @@
 function Stepfinder_auxiliary_code
-%% Various useful functions to be used with the main Stepfinder code for Matlab users
+%% Various useful functions to be used with the main Stepfinder code 
+%For sake of compactness, these functions were collected here. For use in
+%other code or (if available) in their 'demo-run' mode, please cut them out
+%and save separately. Some of the 'demo' options need included functions
+%(for example, for building simulated traces)
 
+%functions in order of appearance with approximate code lines:
+%1) StepfinderCoreCopy (line 14-200): Core functions of the stepfinder
+%2) StepMaker_GeneralDistribution (200-290): Simulate step Traces by 
+    %sampling from specific step distributions
+%3) StepMaker_NestedStepsBuilder(300-345): Simulate step trace with nested multiscale
+    %steps to demonstrate the scaling of peaks in the S-function. 
+%Jacob Kerssemakers, 2018
+%---------------------------------------------------------------------------
 
-
-
-
-
-%% This section (xxx to ~xxxx) contains the 'Core' function of the stepfinder; 
-%it can be cut and autorun independently (on an auto-simulated curve) for demo purposes
 function [FitX,stepsX,S_fin]=StepfinderCoreCopy(X,initval)
-%This function performs a step-fitting algorithm on data in a quick fashion.
+%% This section (line 8 to line 240) contains the 'Core' function of the stepfinder; 
+%it can be cut and autorun independently (on an auto-simulated curve) for demo purposes
+    
+ %This function performs a step-fitting algorithm on data in a quick fashion.
 %Background theory can be found in  Supplement 3 of the paper: "Assembly dynamics of microtubules at molecular resolution" 
 %J.W. Kerssemakers, E. L. Munteanu, L. Laan, T.L. Noetzel, M.E. Janson, M. Dogterom 
 %Nature  442(7103) 709-12 (2006). 
@@ -18,8 +27,8 @@ function [FitX,stepsX,S_fin]=StepfinderCoreCopy(X,initval)
 %output: list of stepsizes: [index time  levelbefore levelafter step dwelltimeafter steperror]
 if nargin<2
     close all;
-    addpath('D:\jkerssemakers\My Documents\BN CD Recent\BN_CD16 LuukLoeff\HandyTools')
-    X=BottomUpTraceBuilder;
+    addpath(genpath(pwd));
+    X=StepMaker_NestedStepsBuilder;
     initval.stepnumber=floor(length(X)); 
     initval.overshoot=1;
     initval.DemoMode=1;
@@ -194,7 +203,101 @@ function FitX=Adapt_Fit(f,idx,FitX)
     end
     
     
-function xx=BottomUpTraceBuilder
+    
+    
+    
+    
+    
+%% functions for generating simulated traces
+
+function [data,TypeOfSim,NumberOfSteps]=StepMaker_GeneralDistribution
+%JWJK_B:-------------------------------------------------------------------
+%Title:Simulate Step Traces
+%Summary: %this function  creates a stepped trace with noise. 
+%Approach: Steps and dwell times are taken as random samples from a 
+%stepsize - and dwell time distribution. Options for the step size 
+% distribution ae 'FlatDistrib'; 'DoubleDistrib' 'TripleDistrib'; 
+%'StepTrain', 'Gaussian' 
+
+%Input: none
+%Output: step trace, trace type numbe rof steps used.
+
+%Jacob Kerssemakers 2016-18
+%:JWJK_B-------------------------------------------------------------------         
+ 
+    close all;
+    TypeOfSim='Gaussian'; 
+    SignalNoiseRatio=(25)^-1;
+    NumberOfSteps=100;
+    MaxStepsSize=100;
+    StepSizes=zeros(NumberOfSteps,1);
+    StepDwellTimes=zeros(NumberOfSteps,1);    
+    StepBinAxis=linspace(0,MaxStepsSize,1000);
+    
+    switch TypeOfSim
+       case 'FlatDistrib'
+            StepSizeCurve=(1+0*(StepBinAxis));   
+            %StepDwellCurve=0*StepBinAxis+100;
+            StepDwellCurve=0*StepBinAxis+10+100*rand(1,1000);
+       case 'DoubleDistrib'
+            StepSizeCurve=(0*(StepBinAxis));
+            StepSizeCurve(100)=100;
+            StepSizeCurve(1000)=10;
+            %StepDwellCurve=0*StepBinAxis+100;
+            StepDwellCurve=0*StepBinAxis+10+100*rand(1,1000);
+       case 'TripleDistrib'
+            StepSizeCurve=(0*(StepBinAxis));
+            StepSizeCurve(10)=100;
+            StepSizeCurve(30)=30;
+            StepSizeCurve(100)=30;
+            %StepDwellCurve=0*StepBinAxis+100;
+            StepDwellCurve=0*StepBinAxis+1+100*rand(1,1000);
+       case 'StepTrain'
+            StepSizeCurve=(0*(StepBinAxis));
+            [~,sel]=min(abs(StepBinAxis-10));
+            StepSizeCurve(sel)=10;
+            StepDwellCurve=0*StepBinAxis+100;
+        case 'Gaussian'
+            StepSizeCurve=exp(-( (StepBinAxis-0.5*MaxStepsSize)/(0.5*MaxStepsSize)).^2);
+            StepDwellCurve=0*StepBinAxis+10+100*rand(1,1000);
+       
+    end
+    StepSizeCurve=StepSizeCurve/sum(StepSizeCurve);  %normalized dstribution
+    SumStepSizeCurve=cumsum(StepSizeCurve);
+         
+    %build step list
+    for jj=1:NumberOfSteps
+            SumVal=rand(1);  %pick a random step
+            sel=find(SumStepSizeCurve>0);
+            NonZeroSumStepSizeCurve=SumStepSizeCurve(sel);
+            NonZeroStepBinAxis=StepBinAxis(sel);
+            NonZeroStepDwellCurve=StepDwellCurve(sel);
+            
+            [~,idx]=min(abs(NonZeroSumStepSizeCurve-SumVal));
+            StepSizes(jj)=NonZeroStepBinAxis(idx);
+            StepDwellTimes(jj)=round(NonZeroStepDwellCurve(idx));
+    end    
+    %build curve
+    Curve=[];
+    Level=0;
+    for jj=1:NumberOfSteps
+        Dwell=StepDwellTimes(jj);
+        Step=StepSizes(jj);
+        NewSection=Level+Step*ones(Dwell,1);  %sign(randn(1,1))*
+        Curve=[Curve ; NewSection];
+        Level=Curve(end);
+    end    
+    Ld=length(Curve);
+    TimAx=(1:Ld)';
+    MeanStep=median(StepSizes);
+    Noise=randn(Ld,1)*SignalNoiseRatio*MeanStep;
+    data=[TimAx Curve+Noise];
+    plot(data(:,1),data(:,2));
+    
+ 
+    
+    
+ function xx=StepMaker_NestedStepsBuilder
 %JWJK_B:-------------------------------------------------------------------
 %Self-scaling step trace
 %
@@ -218,17 +321,14 @@ function xx=BottomUpTraceBuilder
 %Note that the rising 'noise tail' in the S-curve, as observed for experimental data, 
 %here amounts to the final fitting of unit step sizes and can thus be
 %interpred as the 'Nc_th S-peak'.
- 
-%Jacob Kers 2017
-%
-%Input: repaat factors
-%
+%Input: repeat factors
 %Output: trace
 %
 %References: Jacob Kers 2017
 %
 %:JWJK_B-------------------------------------------------------------------
-
+    shoit=1;
+    
     Nc=4; %Concatenation doubling repeats (amount to number of S_peaks+1);
     Np=5; %plateau repeats (pushes 'noise tail' to higher Nsteps)
     StepN=1; %increase of step size per 
@@ -239,6 +339,14 @@ function xx=BottomUpTraceBuilder
         rightpart=xx+stepN/2;
         buf=[leftpart rightpart];
         xx=[[repmat(buf,1,Np)]];
-    end   
+    end  
+    if shoit, plot(xx), end;
+    
+    
+    
+
+    
+
+
     
     
