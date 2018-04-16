@@ -113,123 +113,40 @@ function StepfinderSuperAuto2016(handles)
     initval.setsteps=0;  %(does it work?)%If larger than 0, this will set the numbers of steps to be fitted! 
     initval.CropInputDataFactor=1; %(does it work?)
     initval.showintermediateplots=1; %(does it work?)
+    initval.savestring='mat';
     
 %% main loop  
- while initval.nextfile>0; 
-    [T,OriX,OriSaveName,initval]=Get_Data(initval); % Load data, check for NaN + Inf values 
+ while initval.nextfile>0 
+    [Data,SaveName,initval]=Get_Data(initval); % Load data, check for NaN + Inf values 
+    LD=length(Data);
+    IndexAxis=(1:LD)'; 
     %optional detection response test ----------------------------------    
-    SaveName=OriSaveName; X=OriX;  stepinfo=[];
-    stepnumber_firstrun=min([ceil(length(T)/4) initval.fitrange]);        
-    ResiduX=X;  FitX=0*X;
+    stepinfo=[];
+    stepnumber_firstrun=min([ceil(LD/4) initval.fitrange]);        
+    Residu=Data;  Fit=0*Data;
     S_Curves=zeros(stepnumber_firstrun+1,2);                   
     AllSteps=[];  
     for fitround=1:2;
         initval.stepnumber=stepnumber_firstrun;                         
-        [FitResiduX,~,S_Curve]=StepfinderCore(ResiduX,initval);       
+        [FitResidu,~,S_Curve]=StepfinderCore(Residu,initval);       
         steproundaccept=(max(S_Curve)>initval.SMaxTreshold);
         if steproundaccept
-           [Steps, ~, ~]=Get_StepsFromFit_MeanLevel(T,X,FitResiduX);
-            Steps=AddStep_Errors(ResiduX,Steps);  %measured error
-            Steps(:,9)=fitround; AllSteps=[AllSteps; Steps];
+           [Steps, ~, ~]=Get_StepsFromFit_MeanLevel(IndexAxis,Data,FitResidu);
+            Steps=AddStep_Errors(Residu,Steps);  %measured error
+            Steps(:,9)=fitround; 
+            AllSteps=[AllSteps; Steps];
         end   
         S_Curves(:,fitround)=S_Curve;
-        ResiduX=ResiduX-FitResiduX;  %new residu  
-        FitX=FitX+FitResiduX;        %new fit
+        Residu=Residu-FitResidu;  %new residu  
+        Fit=Fit+FitResidu ;        %new fit
     end  
     if isempty(AllSteps), disp('No steps found'); else  %Final analysis:
-      [FinalSteps, FinalFit]=BuildFinalfit_ViaStepErrors(T,X,AllSteps);  
-               
- %% output section
-        initval.SaveFolder                =  [SaveName,'_Fitting_Result'];        %Make new folder to save results
-        initval.SaveFolder                 =  ['StepFit_Result'];        %Make new folder to save results
-        initval.SaveFolder                 =  fullfile(initval.datapath, initval.SaveFolder);
-         if ~exist(initval.SaveFolder, 'dir')                                   %Check if folder already exists
-         mkdir(initval.SaveFolder);                                             %If not create new folder
-         end
-         cd(initval.SaveFolder);                                                %Set current directory to new folder
       
-        SaveStepsUserFormat(initval,FinalSteps,SaveName);                %Step properties
-        
-        %Fits
-          Time                      = T*initval.resolution;                 %Time Axis
-          Data                      = X;                                    %Raw Data 
-          fits_table                = table(Time, Data, FinalFit);          %Save variables in table
-          writetable(fits_table, [SaveName,'_fits.txt']);                   %Save table containing fits
-        %S-Curve
-          Stepnumber                = (1:1:length(S_Curves))';              %Stepnumbers
-          SCurveRound1              = S_Curves(:,1);                        %S-Curve round 1
-          SCurveRound2              = S_Curves(:,2);                        %S-Curve round 2
-          SCurve_table              = table(Stepnumber, SCurveRound1,...    %Save variables in table 
-                                      SCurveRound2);        
-          writetable(SCurve_table, [SaveName,'_SCurve.txt']);               %Save table containing S-curves     
-   
-
-    %% Plotting
-    %Plotting in GUI   
-        close(findobj('type','figure','name','S-Curve Evaluation'));        %close S-curve plots --> for batch mode
-        close(findobj('type','figure','name','User plots'));                %close user plots --> for batch mode
-        cla;                                                                %clear axes 
-        axis(handles.plot_fit);
-        plot(Time,Data,...                                                  %Plot Data
-        'LineWidth',1,....                                                  %Linewidth
-        'Color',[0,0.2,1]);                                                 %Color line RBG
-        hold on
-        plot(Time,FinalFit,...                                              %Plot Fit
-        'LineWidth',2,....                                                  %Linewidth
-        'Color',[1,0.7,0]);                                                 %Color line RBG
-        initval.MaxX=Time(end);                                             %Determine length X axis
-        initval.MaxY=max(Data)*1.2;                                         %Determine length Y axis
-        initval.MinY=min(Data);                                         %Determine length Y axis
-        xlim([0 initval.MaxX]);                                             %Set X axis
-        ylim([initval.MinY initval.MaxY]);                                             %Set Y axis
-        xlabel('Time (s)','FontSize',12);                                   %Label X axis
-        ylabel('Position (A.U.)','FontSize',12);                            %Label Y axis
-        set(gca,'TickDir','out','TickLength',[0.003 0.0035],'box', 'off');  %Set ticks outslide plotting area, remove box plot
-        initval.LegPlt=legend('Data','Fit');                                        %Set labels legend
-        set(initval.LegPlt,'box', 'Off','Orientation','Horizontal');                %Remove box legend, align horizontal
-        if initval.treshonoff == 1                                          %If baseline tresholding is on plot line
-        initval.BaseLine=repmat(initval.basetresh,1,length(Time));                  %Generate array filled with baseline value
-        hold on
-        plot(Time,initval.BaseLine,...                                              %Plot treshold line                                              
-        'LineWidth',2,...
-        'Color',[1,0,0]); 
-        initval.LegPlt=legend('Data','Fit','Treshold');                             %Update labels legend
-        set(initval.LegPlt,'box', 'Off','Orientation','Horizontal');                %Remove box legend, align horizontal
-        end
-
-        if initval.singlerun == 0                                           %Save figure with fit, during batch mode
-        cd(initval.datapath);                                               %Set current directory to datapath
-        initval.FitPlt = figure('visible', 'off');                          %Plot invisible figure for saving
-        set(gcf, 'units', 'normalized', 'position', [0.01 1 0.7 0.5])       %Set size figure same as GUI
-        copyobj(handles.plot_fit, initval.FitPlt);                          %Copy figure from GUI
-        xlabel('Time (s)','FontSize',12);                                   %Set label X axis
-        ylabel('Position (A.U.)','FontSize',12);                            %Set label Y axis
-        set(gca,'TickDir','out','TickLength',[0.003 0.0035],'box', 'off');  %Set ticks outslide plotting area, remove box plot
-        saveas(initval.FitPlt, [initval.SaveFolder '\' SaveName '_Fit.jpg']);                      %Save figure as jpg
-        close(initval.FitPlt);                                              %Close invisible plot
-        end
-        cd(initval.codefolder);                                             %Set current directory to pwd
-
-    % Plotting user Plots
-        if initval.userplt==1
-        User_Plot_Result(T,X,FinalFit,FinalSteps,S_Curves,initval);
-        if initval.singlerun == 0                                           %Save userplot jpg if batch run is on
-        cd(initval.SaveFolder);                                             %Set current directory to savefolder                                                   
-        saveas(findobj('type','figure','name','User plots'),...             %Save userplot figure as jpg
-        [initval.SaveFolder '\' SaveName '_User_plot.jpg']);
-        end
-        end
-
-    % Plotting S-Curve Evaluation
-        if initval.scurve_eval==1                                          
-        SCurve_Evaluation(T,X,FinalFit,FinalSteps,S_Curves,initval,ResiduX,FitResiduX,FitX); 
-        if initval.singlerun == 0                                           %Save userplot jpg if batch run is on
-        cd(initval.SaveFolder);                                             %Set current directory to savefolder  
-        saveas(findobj('type','figure','name','S-Curve Evaluation'),...     %Save S-curve figure as jpg
-        [SaveName '_SCurve.jpg'])
-        end
-        end
-        disp('steps found:'), display(length(FinalSteps(:,1)))
+    [FinalSteps, FinalFit]=BuildFinalfit_ViaStepErrors(IndexAxis,Data,AllSteps);  
+               
+     SaveAndPlot(   initval,SaveName,handles,...
+                            IndexAxis, Data, FinalFit,...
+                            S_Curves, FinalSteps);     
         end        
         disp('done!');
     end
@@ -817,7 +734,7 @@ function [FinalSteps, FinalFit]=BuildFinalfit_ViaStepErrors(T,X,AllSteps)
     FinalSteps(:,9)=FinalRoundNo;   
    
  
-function [T,X,SaveName,initval]=Get_Data(initval);
+function [Data,SaveName,initval]=Get_Data(initval);
 % This function loads the data, either standard or user-choice
     disp('Loading..');
     CurrentFolder=pwd;
@@ -843,21 +760,19 @@ function [T,X,SaveName,initval]=Get_Data(initval);
                 initval.nextfile=0;
             else
                 initval.nextfile=fileindex+1;
-            end
-            
+            end           
     end
-    LD=length(data(:,1));
+    [LD,cols]=size(data);
+    if cols>1, data=data(:,2); end %if array,it is assumed first column is time
     if initval.CropInputDataFactor<1
         Cropit=round(LD/initval.CropInputDataFactor);    
-        T=data(1:Cropit,1); 
-        X=data(1:Cropit,2); 
+        Data=data(1:Cropit); 
     else
-        T=data(:,1); 
-        X=data(:,2); 
+        Data=data; 
     end
 %    check for NaN + Inf values
-     infcheck=isinf(X);
-     nancheck=isnan(X);
+     infcheck=isinf(Data);
+     nancheck=isnan(Data);
 
      if sum(infcheck)>0;
          msgbox('Your data contains infinite values','ERROR', 'error')
@@ -867,8 +782,7 @@ function [T,X,SaveName,initval]=Get_Data(initval);
      if sum(nancheck)>0;
          msgbox('Your data contains NaN values','ERROR', 'error')
          return;
-     end      
-     T=(1:1:length(X))';   
+     end         
      disp('Analyzing:'), disp(SaveName);
    
  
@@ -991,21 +905,8 @@ function [T,X,SaveName,initval]=Get_Data(initval);
 % . This is repeated until the new sigma does not change much
 % %anymore
 %output: positions of outliers
-
 %Jacob Kers 2013 and before---------------------------------------------
 binz=50;
-
-
-if nargin<5  %For testing/demo purposes
-    close all
-    data=JK00_DEMODATA_Peaks;
-    tolerance=2;
-    sigchange=0.7;
-    how='positive';
-    sho=1;
-    plot(data,'o-');
-    binz=20;
-end
 
 sigma=1E20;            %at start, use a total-upper-limit 
 ratio=0;
@@ -1043,12 +944,32 @@ cleandata=data(selc);
 hx=(min(cleandata):(range(cleandata))/binz:max(cleandata));   %make an axis
 sthst=hist(cleandata,hx);
 
-function SaveStepsUserFormat(initval,FinalSteps,SaveName)
-%This function saves data in a user-specific way.
- disp('Saving Files...')
+function SaveAndPlot(initval,SaveName,handles,...
+        IndexAxis,Data,FinalFit,...
+        S_Curves, FinalSteps);
 
- 
-     %Step properties
+%This function saves and plots data.
+disp('Steps found:'), display(length(FinalSteps(:,1)))     
+disp('Saving Files...')
+
+     %% plot and save section
+        initval.SaveFolder                =  [SaveName,'_Fitting_Result'];        %Make new folder to save results
+        initval.SaveFolder                 =  ['StepFit_Result'];        %Make new folder to save results
+        initval.SaveFolder                 =  fullfile(initval.datapath, initval.SaveFolder);
+         if ~exist(initval.SaveFolder, 'dir')                                   %Check if folder already exists
+         mkdir(initval.SaveFolder);                                             %If not create new folder
+         end    
+    
+    
+    %Fits
+      Time                      = IndexAxis*initval.resolution;                 %Time Axis 
+      
+    %S-Curve
+      Stepnumber                = (1:1:length(S_Curves))';              %Stepnumbers
+      SCurveRound1              = S_Curves(:,1);                        %S-Curve round 1
+      SCurveRound2              = S_Curves(:,2);                        %S-Curve round 2
+    
+    %Step properties
       idx_steps                 =  FinalSteps(:,4)> initval.basetresh;  %Treshholding of steps
       IndexStep                 =  FinalSteps(idx_steps,1);             %Index where step occured
       TimeStep                  =  FinalSteps(idx_steps,2)...           %Time when step occured
@@ -1062,12 +983,101 @@ function SaveStepsUserFormat(initval,FinalSteps,SaveName)
                                    *initval.resolution;  
       StepError                 =  FinalSteps(idx_steps,8);             %Error of each step
       
-      properties_table          = table(IndexStep,TimeStep,...          %Save variables in table
-                                  LevelBefore,LevelAfter,StepSize,...
-                                  DwellTimeStepBefore,DwellTimeStepAfter,StepError); 
-                              
-      writetable(properties_table, [SaveName,'_properties.txt']);       %Save table containing properties
+      curpth=pwd;
+      cd(initval.SaveFolder);
+      switch initval.savestring
+          case 'txt'  
+              fits_table                = table(Time, Data, FinalFit);          %Save variables in table           
+              properties_table          = table(IndexStep,TimeStep,...          %Save variables in table
+                                          LevelBefore,LevelAfter,StepSize,...
+                                          DwellTimeStepBefore,DwellTimeStepAfter,StepError); 
+               SCurve_table              = table(Stepnumber, SCurveRound1,...    %Save variables in table 
+                                          SCurveRound2);                         
+               writetable(fits_table, [SaveName,'_fits.txt']);                   %Save table containing fits                       
+               writetable(properties_table, [SaveName,'_properties.txt']);       %Save table containing properties                          
+               writetable(SCurve_table, [SaveName,'_SCurve.txt']);               %Save table containing S-curves     
+          case 'mat'
+              save([SaveName,'_fits'],'Time', 'Data', 'FinalFit'); 
+              save([SaveName,'_properties'],...
+                 'IndexStep','TimeStep',...   
+                 'LevelBefore','LevelAfter','StepSize',...
+                 'DwellTimeStepBefore','DwellTimeStepAfter',...
+                 'StepError');
+              save([SaveName,'_SCurve'],...
+                 'Stepnumber', 'SCurveRound1','SCurveRound2');
+      end
+      cd(curpth);
+
+    %% Plotting
+    %Plotting in GUI   
+        close(findobj('type','figure','name','S-Curve Evaluation'));        %close S-curve plots --> for batch mode
+        close(findobj('type','figure','name','User plots'));                %close user plots --> for batch mode
+        cla;                                                                %clear axes 
+        axis(handles.plot_fit);
+        plot(Time,Data,...                                                  %Plot Data
+        'LineWidth',1,....                                                  %Linewidth
+        'Color',[0,0.2,1]);                                                 %Color line RBG
+        hold on
+        plot(Time,FinalFit,...                                              %Plot Fit
+        'LineWidth',2,....                                                  %Linewidth
+        'Color',[1,0.7,0]);                                                 %Color line RBG
+        initval.MaxX=Time(end);                                             %Determine length X axis
+        initval.MaxY=max(Data)*1.2;                                         %Determine length Y axis
+        initval.MinY=min(Data);                                         %Determine length Y axis
+        xlim([0 initval.MaxX]);                                             %Set X axis
+        ylim([initval.MinY initval.MaxY]);                                             %Set Y axis
+        xlabel('Time (s)','FontSize',12);                                   %Label X axis
+        ylabel('Position (A.U.)','FontSize',12);                            %Label Y axis
+        set(gca,'TickDir','out','TickLength',[0.003 0.0035],'box', 'off');  %Set ticks outslide plotting area, remove box plot
+        initval.LegPlt=legend('Data','Fit');                                        %Set labels legend
+        set(initval.LegPlt,'box', 'Off','Orientation','Horizontal');                %Remove box legend, align horizontal
+        if initval.treshonoff == 1                                          %If baseline tresholding is on plot line
+            initval.BaseLine=repmat(initval.basetresh,1,length(Time));                  %Generate array filled with baseline value
+            hold on
+            plot(Time,initval.BaseLine,...                                              %Plot treshold line                                              
+            'LineWidth',2,...
+            'Color',[1,0,0]); 
+            initval.LegPlt=legend('Data','Fit','Treshold');                             %Update labels legend
+            set(initval.LegPlt,'box', 'Off','Orientation','Horizontal');                %Remove box legend, align horizontal
+        end
+
+        if initval.singlerun == 0                                           %Save figure with fit, during batch mode
+            cd(initval.datapath);                                               %Set current directory to datapath
+            initval.FitPlt = figure('visible', 'off');                          %Plot invisible figure for saving
+            set(gcf, 'units', 'normalized', 'position', [0.01 1 0.7 0.5])       %Set size figure same as GUI
+            copyobj(handles.plot_fit, initval.FitPlt);                          %Copy figure from GUI
+            xlabel('Time (s)','FontSize',12);                                   %Set label X axis
+            ylabel('Position (A.U.)','FontSize',12);                            %Set label Y axis
+            set(gca,'TickDir','out','TickLength',[0.003 0.0035],'box', 'off');  %Set ticks outslide plotting area, remove box plot
+            saveas(initval.FitPlt, [initval.SaveFolder '\' SaveName '_Fit.jpg']);                      %Save figure as jpg
+            close(initval.FitPlt);                                              %Close invisible plot
+        end
+        cd(initval.codefolder);                                             %Set current directory to pwd
+
+    % Plotting user Plots
+        if initval.userplt==1
+            User_Plot_Result(IndexAxis,Data,FinalFit,FinalSteps,S_Curves,initval);
+            if initval.singlerun == 0                                           %Save userplot jpg if batch run is on
+            cd(initval.SaveFolder);                                             %Set current directory to savefolder                                                   
+            saveas(findobj('type','figure','name','User plots'),...             %Save userplot figure as jpg
+            [initval.SaveFolder '\' SaveName '_User_plot.jpg']);
+            end
+        end
+
+    % Plotting S-Curve Evaluation
+        if initval.scurve_eval==1                                          
+            SCurve_Evaluation(IndexAxis,Data,FinalFit,FinalSteps,S_Curves,initval,Residu,FitResidu,Fit); 
+            if initval.singlerun == 0                                           %Save userplot jpg if batch run is on
+            cd(initval.SaveFolder);                                             %Set current directory to savefolder  
+            saveas(findobj('type','figure','name','S-Curve Evaluation'),...     %Save S-curve figure as jpg
+            [SaveName '_SCurve.jpg'])
+            end
+        end
+
  
+
+      
+      
  function SCurve_Evaluation(T,X,FinalFit,FinalSteps,S_Curves,initval,Xpeel,FitXpeel, FitX); 
     Stepnumber     = (1:1:length(S_Curves))'; 
     StepRange=max(Stepnumber);
