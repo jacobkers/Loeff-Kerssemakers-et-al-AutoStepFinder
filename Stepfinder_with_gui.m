@@ -66,12 +66,10 @@ if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgr
 
 end
 
-function StepfinderSuperAuto2016(handles) 
+function AutoStepFinder(handles) 
      %% Parameters set in GUI
-    initval.datapath        = get(handles.data_path, 'string');         %Data path
-    
-    initval.codefolder      = pwd;
-    
+    initval.datapath        = get(handles.data_path, 'string');         %Data path    
+    initval.codefolder      = pwd;    
     initval.GlobalErrorAccept=0.1;                                       %User value for accepting a split or merge round solution
     
     initval.SMaxTreshold    = str2double(get(handles.SMaxTreshold,...   %Threshold for second round of fitting
@@ -95,19 +93,18 @@ function StepfinderSuperAuto2016(handles)
     initval.fitmean         = get(handles.fitmean,'Value');             %Use mean for fitting
     initval.fitmedian       = get(handles.fitmedian,'Value');           %Use median for fitting
     initval.treshonoff      = get(handles.basetreshon,'Value');         %Turn base line treshholding on/ off
-      if initval.treshonoff == 1
+    if initval.treshonoff == 1
       initval.basetresh     = initval.meanbase*initval.overbase;        %Treshhold the mean of your base line
-      else
+    else
       initval.basetresh     = -100000;
-      end
-        
+    end       
     initval.singlerun       = get(handles.singrun,'Value');             %Single or batch run
-      if initval.singlerun  == 1
+    if initval.singlerun  == 1
       initval.hand_load     =  1;                                       %Single Run
-      else    
+    else    
       initval.hand_load     =  2;                                       %Batch Run
       initval.datapath      = uigetdir(initval.datapath);               %Get directory for batch analysis
-      end 
+    end 
            
 %% Hidden parameters (not on the GUI) for advanced use  
     initval.setsteps=0;  %(does it work?)%If larger than 0, this will set the numbers of steps to be fitted! 
@@ -117,44 +114,39 @@ function StepfinderSuperAuto2016(handles)
     
 %% main loop  
  while initval.nextfile>0 
-    [Data,SaveName,initval]=Get_Data(initval); % Load data, check for NaN + Inf values 
+    [Data,SaveName,initval]=Get_Data(initval); 
     LD=length(Data);
-    IndexAxis=(1:LD)'; 
-    %optional detection response test ----------------------------------    
-    stepinfo=[];
+    IndexAxis=(1:LD)';     
     stepnumber_firstrun=min([ceil(LD/4) initval.fitrange]);        
     Residu=Data;  Fit=0*Data;
     S_Curves=zeros(stepnumber_firstrun+1,2);                   
     AllSteps=[];  
-    for fitround=1:2;
+    for fitround=1:2
         initval.stepnumber=stepnumber_firstrun;                         
         [FitResidu,~,S_Curve]=StepfinderCore(Residu,initval);       
         steproundaccept=(max(S_Curve)>initval.SMaxTreshold);
         if steproundaccept
            [Steps, ~, ~]=Get_StepsFromFit_MeanLevel(IndexAxis,Data,FitResidu);
-            Steps=AddStep_Errors(Residu,Steps);  %measured error
-            Steps(:,9)=fitround; 
+            Steps=AddStep_Errors(Residu,Steps);  Steps(:,9)=fitround;             
             AllSteps=[AllSteps; Steps];
         end   
         S_Curves(:,fitround)=S_Curve;
         Residu=Residu-FitResidu;  %new residu  
-        Fit=Fit+FitResidu ;        %new fit
+        Fit=Fit+FitResidu ;       %new fit
     end  
-    if isempty(AllSteps), disp('No steps found'); else  %Final analysis:
-      
-    [FinalSteps, FinalFit]=BuildFinalfit_ViaStepErrors(IndexAxis,Data,AllSteps);  
-               
+    if isempty(AllSteps), disp('No steps found'); else  %Final analysis:      
+    [FinalSteps, FinalFit]=BuildFinalfit_ViaStepErrors(IndexAxis,Data,AllSteps);                 
      SaveAndPlot(   initval,SaveName,handles,...
                             IndexAxis, Data, FinalFit,...
                             S_Curves, FinalSteps);     
-        end        
-        disp('done!');
-    end
+     end        
+     disp('done!');
+end
 
 
 
 
-% --- Executes just before Stepfinder_with_gui is made visible.
+%% --- Executes just before Stepfinder_with_gui is made visible.
 function Stepfinder_with_gui_OpeningFcn(hObject, eventdata, handles, varargin)
 % This function has no output args, see OutputFcn.
 % hObject    handle to figure
@@ -352,7 +344,7 @@ function runprogram_Callback(hObject, eventdata, handles,Time,Data,FinalFit)
 % hObject    handle to runprogram (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-StepfinderSuperAuto2016(handles)
+AutoStepFinder(handles)
 
 
 % --- Executes on button press in treshholdbox.
@@ -470,29 +462,7 @@ function figure1_SizeChangedFcn(hObject, eventdata, handles)
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-%% This section (570 to ~770) contains the 'Core' function of the stepfinder; 
+%% This section (490- to ~650) contains the 'Core' function of the stepfinder; 
 %it can be cut and autorun independently (on a simple simulated curve) for demo purposes
 function [FitX,stepsX,S_fin]=StepfinderCore(X,initval)
 %This function splits data in a quick fashion.
@@ -655,26 +625,7 @@ function FitX=Adapt_Fit(f,idx,FitX)
 
     
     
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
+ 
     
 %% This section contains code related to the multipass steps
 function StepsX=AddStep_Errors(X,StepsX)   
@@ -695,6 +646,7 @@ for i=1:ls
     StepsX(i,col+1)=2*(rmsbefore^2/Nbefore+rmsafter^2/Nafter)^0.5; %plus minus 95%
     i1=i2;
 end
+
 
 function [FinalSteps, FinalFit]=BuildFinalfit_ViaStepErrors(T,X,AllSteps)
 %build a step fit based on all retained indices. Perform step-by-step error
