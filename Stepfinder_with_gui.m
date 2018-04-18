@@ -113,28 +113,34 @@ function AutoStepFinder(handles)
     initval.savestring='txt';            %'mat'
     initval.steperrorestimate='measured'  ;% 'predicted';    %'measured'
     
-%% main loop  
+%% main loop 
+
  while initval.nextfile>0 
-    [Data,SaveName,initval]=Get_Data(initval); 
+    [Data,SaveName,initval]=Get_Data(initval);
+    tic
     LD=length(Data);
     IndexAxis=(1:LD)';     
     stepnumber_firstrun=min([ceil(LD/4) initval.fitrange]);        
     Residu=Data;  Fit=0*Data;
-    S_Curves=zeros(stepnumber_firstrun+1,2);                   
+    S_Curves=zeros(stepnumber_firstrun+1,2); 
+    Fullsplitlog=[];
     AllSteps=[];  
     for fitround=1:2
         initval.stepnumber=stepnumber_firstrun;                         
-        [FitResidu,~,S_Curve]=StepfinderCore(Residu,initval);       
+        [FitResidu,~,S_Curve,splitlog]=StepfinderCore(Residu,initval);       
         steproundaccept=(max(S_Curve)>initval.SMaxTreshold);
         if steproundaccept
            [Steps, ~, ~]=Get_StepTableFromFit(IndexAxis,FitResidu);
-            Steps=AddStep_Errors(Residu,Steps,initval);  Steps(:,9)=fitround;             
+            Steps=AddStep_Errors(Residu,Steps,initval);  
+            Steps(:,9)=fitround; splitlog(:,2)=fitround;      
             AllSteps=[AllSteps; Steps];
+            Fullsplitlog=[Fullsplitlog; splitlog];
         end   
         S_Curves(:,fitround)=S_Curve;
         Residu=Residu-FitResidu;  %new residu  
         Fit=Fit+FitResidu ;       %new fit
     end  
+    
     if isempty(AllSteps), disp('No steps found'); else  %Final analysis:      
     [FinalSteps, FinalFit]=BuildFinalfit_ViaStepErrors(IndexAxis,Data,AllSteps,initval);                 
      SaveAndPlot(   initval,SaveName,handles,...
@@ -143,7 +149,7 @@ function AutoStepFinder(handles)
      end        
      disp('done!');
 end
-
+toc
 
 
 
@@ -465,7 +471,7 @@ function figure1_SizeChangedFcn(hObject, eventdata, handles)
 
 %% This section (490- to ~650) contains the 'Core' function of the stepfinder; 
 %it can be cut and autorun independently (on a simple simulated curve) for demo purposes
-function [FitX,stepsX,S_fin]=StepfinderCore(X,initval)
+function [FitX,stepsX,S_fin,splitlog]=StepfinderCore(X,initval)
 %This function splits data in a quick fashion.
 %This one is a compact version of the first quick 2007 version
 %output: list of stepsizes: [index time  levelbefore levelafter step dwelltimeafter steperror]
@@ -475,12 +481,13 @@ if nargin<2
 end
     %% 1 split, estimate best fit, repeat
     initval.stepnumber=min([ceil(length(X)/4) initval.stepnumber]);
-    [~,~,S_raw]=Split_until_ready(X,initval); %run 1: full iteration
+    [~,f,S_raw,splitlog]=Split_until_ready(X,initval); %run 1: full iteration
     
     [bestshot,S_fin]=Eval_Scurve(S_raw);
+    initval.stepnumber=round(min([( bestshot-1) ceil(length(X)/4)])); 
 
-     initval.stepnumber=round(min([( bestshot-1)*initval.overshoot ceil(length(X)/4)])); 
-    [FitX,~,~]=Split_until_ready(X,initval); %run2: estimate done by the program
+    indexlist=sort(splitlog(2:initval.stepnumber+1)); 
+    FitX=Get_FitFromStepsindices(X,indexlist,'mean');   
     stepsX=Get_Steps(FitX); 
 
 if nargin<2
@@ -512,32 +519,33 @@ function stepsX=Get_Steps(FitX)
     dwellX=T(sel(2:lsel))-T(sel(1:lsel-1)); dwellX=[dwellX' T(lx)-T(sel(lsel))]';
     stepsX=[sel T(sel) FitX(sel) FitX(sel+1) difX(sel) dwellX]; 
             
-function [FitX,f,S]=Split_until_ready(X,initval)
+function [FitX,f,S,splitlog]=Split_until_ready(X,initval)
      c=1; stop=0;
      N=length(X);    
      FitX=mean(X)*ones(N,1); 
      S=ones(initval.stepnumber,1);
-
+     splitlog=zeros(initval.stepnumber,1);
      %Create the first plateau------------------------------------------
      istart=1; istop=length(X);
      [inxt, avl, avr,rankit]=Splitfast(X(istart:istop));           
      f=[[1, 1, 1, 0, 0,0];
         [istart, istop, inxt+istart-1, avl, avr,rankit]; ...
-        [N, N, N,0, 0,0]];  
+        [N, N, N,0, 0,0,]];  
      %parameters needed for calculating S(1):-----------------
     qx=sum(X.^2);                                   %sum of squared data
     qm=N*(mean(X))^2;                               %sum of squared averages plateaus, startvalue
     aqm=(inxt-istart+1)*avl^2+(istop-inxt)*avr^2;   %sum of squared averages anti-plateaus, startvalue
     S(c)=(qx-aqm)/(qx-qm);                          %S: ratio of variances of fit and anti-fit        
     %---------------------------------       
-
+    wm=5;  %minimum plateau length to split
      while stop==0; %Split until ready----------------------------------
         c=c+1;
-        fsel=find((f(:,2)-f(:,1)>5)&f(:,6)~=0);        %among those plateaus sensibly long..
+        fsel=find((f(:,2)-f(:,1)>wm)&f(:,6)~=0);        %among those plateaus sensibly long..
         [~,idx2]=max(f(fsel,6)); idx=(fsel(idx2));   %...find the best candidate to split. 
+        splitlog(c)=f(idx,3);                          %keep track of index order
         FitX=Adapt_Fit(f,idx,FitX);                     %adapt fit-curve
         [f,qm,aqm]=expand_f(f,qm,aqm,idx,X);            %adapt plateau-table; adapt S
-        S(c)=(qx-aqm)/(qx-qm);                             %Calculate new S-function  
+        S(c)=(qx-aqm)/(qx-qm);                             %Calculate new S-function               
         stop=(1.0*c>initval.stepnumber);
     end   %-------------------------------------------------------------------
           
@@ -623,12 +631,32 @@ function FitX=Adapt_Fit(f,idx,FitX)
         end
     end
 
+  function FitX=Get_FitFromStepsindices(X,indexlist,modus) 
+  % This function builds plateau data
+    %list of levels: [startindex  stopindex starttime stoptime level dwell stepbefore stepafter]
+        lx=length(X);
+        lsel=length(indexlist); %note: index points to last point before step
 
-    
+        %Build a 'FitX' based on the median levels (ot on the averages)
+        idxes=[0 ; indexlist ; lx];
+        FitX=0*X;
+        for ii=1:lsel+1
+            ixlo=idxes(ii)+1;  %first index of plateau
+            ixhi=idxes(ii+1);  %last index
+            switch modus
+                case 'mean', FitX(ixlo:ixhi)=nanmean(X(ixlo:ixhi));
+                case 'median', FitX(ixlo:ixhi)=nanmedian(X(ixlo:ixhi));
+            end
+        end    
+        
+
+ 
     
  
     
-%% This section contains code related to the multipass steps
+%This section contains code related to the multipass steps  
+    
+     
 function StepsX=AddStep_Errors(X,StepsX,initval)   
 %This function calculates step errors associated with the steps.
 % Two options: 
@@ -673,27 +701,55 @@ function [FinalSteps, FinalFit]=BuildFinalfit_ViaStepErrors(T,X,AllSteps,initval
     AllSteps=AllSteps(ix,:);
     RoundNo=AllSteps(:,9);
     
-    %2) rebuild fit from all indices alone
+    %2)Rebuild fit from all indices, round one and round 2.
     CandidateFit=Get_FitFromStepsindices(X,AllSteps(:,1),'mean'); 
     CandidateSteps=Get_StepTableFromFit(T,CandidateFit); 
-    CandidateSteps=AddStep_Errors(X,CandidateSteps,initval);
+    %3 get errors
+    CandidateSteps=AddStep_Errors(X,CandidateSteps,initval); 
     CandidateRelStepErr=(CandidateSteps(:,8)./abs(CandidateSteps(:,5))); 
-    [~,~,FinalErrorTreshold]=Outlier_flag(CandidateRelStepErr,2,0.8,'positive',0);
     
     
-    %% keep round 1-steps AND 'good' round 2 steps
+    
     %fetch properties (round number) of original property table
-    LC=length(CandidateSteps(:,1));
+    %(note: this table is unsorted since it comprises of two rounds)
+    LC=length(CandidateRelStepErr);
+    CandidateRoundNo=zeros(LC,1);
     for ii=1:LC  
         idxC=CandidateSteps(ii,1);     
         sel=find(AllSteps(:,1)==idxC);
         CandidateRoundNo(ii)=RoundNo(sel(1));
     end
     
-    CandidateRoundNo=zeros(LC,1);
+    %% Now, choose the final number of steps following default or user-settings criteria
+    %1. DEFAULT:    Keep round1-steps AND 'good enough' round2-steps.
+    %2. OVERSHOOT:  sort steps by error; , adapt above number, relative
+    %3. MANUAL:     sort steps by error, adapt number, absolute. (overrides overshoot): 
 
-    sel=find((CandidateRelStepErr<2*FinalErrorTreshold)|CandidateRoundNo==1);  
-    FinalIdxes=CandidateSteps(sel,1);
+
+    % Default: Keep round 1-steps AND 'good' round 2 steps:
+    % Get a   measure for the error of steps in the first round. 
+    % This can be used for reference of errors from second-round steps
+    [~,~,FinalErrorTreshold]=Outlier_flag(CandidateRelStepErr,2,0.8,'positive',0);
+    sel_default=find((CandidateRelStepErr<2*FinalErrorTreshold)|CandidateRoundNo==1);  
+    if (initval.overshoot ~=1)| (initval.setsteps>0) %overshoot adapt
+        N_def=length(sel_default); %number of steps found by default selection       
+        if initval.setsteps>0 
+            N_fin=initval.setsteps;
+            N_fin=min([N_fin ceil(length(X)/4) initval.fitrange]); %limit check            
+        else
+            N_ovsh=ceil(initval.overshoot*N_def);
+            N_ovsh=min([N_ovsh ceil(length(X)/4) initval.fitrange]); %limit check
+            N_fin=N_ovsh;
+        end
+        [~,sortidx]=sort(CandidateRelStepErr); %idxes sorted  by step error, smallest first
+        sel_fin=sortidx(1:N_fin);  %get the most precise steps indices
+    else
+        sel_fin=sel_default;
+    end
+    FinalIdxes=CandidateSteps(sel_fin,1); 
+    
+    %Re-build the fit from the selected indices (Effectively, rejected
+    %indices are 'merged' in this step)
     FinalFit=Get_FitFromStepsindices(X,FinalIdxes,'mean');
     FinalSteps=Get_StepTableFromFit(T,FinalFit); 
     FinalSteps=AddStep_Errors(X,FinalSteps,initval);
@@ -759,24 +815,7 @@ function [Data,SaveName,initval]=Get_Data(initval);
      disp('Analyzing:'), disp(SaveName);
    
  
-  function FitX=Get_FitFromStepsindices(X,indexlist,modus) 
-  % This function builds plateau data
-    %list of levels: [startindex  stopindex starttime stoptime level dwell stepbefore stepafter]
-        lx=length(X);
-        lsel=length(indexlist); %note: index points to last point before step
-
-        %Build a 'FitX' based on the median levels (ot on the averages)
-        idxes=[0 ; indexlist ; lx];
-        FitX=0*X;
-        for ii=1:lsel+1
-            ixlo=idxes(ii)+1;  %first index of plateau
-            ixhi=idxes(ii+1);  %last index
-            switch modus
-                case 'mean', FitX(ixlo:ixhi)=nanmean(X(ixlo:ixhi));
-                case 'median', FitX(ixlo:ixhi)=nanmedian(X(ixlo:ixhi));
-            end
-        end    
-        
+  
         
  function [StepsX,levelX, histX]=Get_StepTableFromFit(T,FitX);
 %This function builds tables of steps or levels properties from a step fit
