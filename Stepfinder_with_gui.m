@@ -107,7 +107,8 @@ function AutoStepFinder(handles)
     end 
            
 %% Hidden parameters (not on the GUI) for advanced use  
-    initval.setsteps=0;  %(does it work?)%If larger than 0, this will set the numbers of steps to be fitted! 
+    initval.setsteps=0;  %%If larger than 0, this will set the numbers of steps to be fitted! 
+    initval.localstepmerge=1;  %if larger than 0, weird steps are removed from fit
     initval.CropInputDataFactor=1; %(does it work?)
     initval.showintermediateplots=1; %(does it work?)
     initval.savestring='txt';            %'mat'
@@ -123,26 +124,29 @@ function AutoStepFinder(handles)
     stepnumber_firstrun=min([ceil(LD/4) initval.fitrange]);        
     Residu=Data;  Fit=0*Data;
     S_Curves=zeros(stepnumber_firstrun+1,2); 
-    Fullsplitlog=[];
-    AllSteps=[];  
+
+    N_found_steps_per_round=zeros(2,1); 
+    roundlist=[];
     for fitround=1:2
         initval.stepnumber=stepnumber_firstrun;                         
-        [FitResidu,~,S_Curve,splitlog]=StepfinderCore(Residu,initval);       
+        [FitResidu,~,S_Curve,split_indices,best_shot]=StepfinderCore(Residu,initval);       
         steproundaccept=(max(S_Curve)>initval.SMaxTreshold);
         if steproundaccept
+           N_found_steps_per_round(fitround)=best_shot;
            [Steps, ~, ~]=Get_StepTableFromFit(IndexAxis,FitResidu);
-            Steps=AddStep_Errors(Residu,Steps,initval);  
-            Steps(:,9)=fitround; splitlog(:,2)=fitround;      
-            AllSteps=[AllSteps; Steps];
-            Fullsplitlog=[Fullsplitlog; splitlog];
-        end   
+           roundlist=[roundlist ; fitround*ones(best_shot,1)];;
+            if fitround==1
+                split_log=split_indices; 
+            end
+         end   
         S_Curves(:,fitround)=S_Curve;
         Residu=Residu-FitResidu;  %new residu  
         Fit=Fit+FitResidu ;       %new fit
-    end  
-    
-    if isempty(AllSteps), disp('No steps found'); else  %Final analysis:      
-    [FinalSteps, FinalFit]=BuildFinalfit_ViaStepErrors(IndexAxis,Data,AllSteps,initval);                 
+    end 
+    N_found_steps=sum(N_found_steps_per_round);
+    full_split_log=[split_log [roundlist; 3*ones(length(split_log)-N_found_steps,1)]];    
+    if N_found_steps==0, disp('No steps found'); else  %Final analysis: 
+    [FinalSteps, FinalFit]=BuildFinalfitViaStepErrors(IndexAxis,Data,full_split_log,N_found_steps,initval);                 
      SaveAndPlot(   initval,SaveName,handles,...
                             IndexAxis, Data, FinalFit,...
                             S_Curves, FinalSteps);     
@@ -471,7 +475,8 @@ function figure1_SizeChangedFcn(hObject, eventdata, handles)
 
 %% This section (490- to ~650) contains the 'Core' function of the stepfinder; 
 %it can be cut and autorun independently (on a simple simulated curve) for demo purposes
-function [FitX,stepsX,S_fin,splitlog]=StepfinderCore(X,initval)
+
+function [FitX,stepsX,S_fin,splitlog,best_shot]=StepfinderCore(X,initval)
 %This function splits data in a quick fashion.
 %This one is a compact version of the first quick 2007 version
 %output: list of stepsizes: [index time  levelbefore levelafter step dwelltimeafter steperror]
@@ -481,12 +486,12 @@ if nargin<2
 end
     %% 1 split, estimate best fit, repeat
     initval.stepnumber=min([ceil(length(X)/4) initval.stepnumber]);
-    [~,f,S_raw,splitlog]=Split_until_ready(X,initval); %run 1: full iteration
+    [~,~,S_raw,splitlog]=Split_until_ready(X,initval); %run 1: full iteration
     
-    [bestshot,S_fin]=Eval_Scurve(S_raw);
-    initval.stepnumber=round(min([( bestshot-1) ceil(length(X)/4)])); 
-
-    indexlist=sort(splitlog(2:initval.stepnumber+1)); 
+    [s_peakidx,S_fin]=Eval_Scurve(S_raw);
+    best_shot=round(min([(s_peakidx-1) ceil(length(X)/4)])); 
+    indexlist=sort(splitlog(1:best_shot)); 
+    
     FitX=Get_FitFromStepsindices(X,indexlist,'mean');   
     stepsX=Get_Steps(FitX); 
 
@@ -542,7 +547,7 @@ function [FitX,f,S,splitlog]=Split_until_ready(X,initval)
         c=c+1;
         fsel=find((f(:,2)-f(:,1)>wm)&f(:,6)~=0);        %among those plateaus sensibly long..
         [~,idx2]=max(f(fsel,6)); idx=(fsel(idx2));   %...find the best candidate to split. 
-        splitlog(c)=f(idx,3);                          %keep track of index order
+        splitlog(c-1)=f(idx,3);                          %keep track of index order
         FitX=Adapt_Fit(f,idx,FitX);                     %adapt fit-curve
         [f,qm,aqm]=expand_f(f,qm,aqm,idx,X);            %adapt plateau-table; adapt S
         S(c)=(qx-aqm)/(qx-qm);                             %Calculate new S-function               
@@ -691,74 +696,51 @@ for i=1:ls
 end
 
 
-function [FinalSteps, FinalFit]=BuildFinalfit_ViaStepErrors(T,X,AllSteps,initval)
+function [FinalSteps, FinalFit]=BuildFinalfitViaStepErrors(T,X,splitlog,best_shot,initval)
 %build a step fit based on all retained indices. Perform step-by-step error
 %analysis to accept second-round (residual) steps or not (first-round steps are always
 %accepted at this stage)
-%1) first, add 
-   %1) sort by index (ignoring round)
-    [~,ix]=sort(AllSteps(:,1));  
-    AllSteps=AllSteps(ix,:);
-    RoundNo=AllSteps(:,9);
-    
-    %2)Rebuild fit from all indices, round one and round 2.
-    CandidateFit=Get_FitFromStepsindices(X,AllSteps(:,1),'mean'); 
-    CandidateSteps=Get_StepTableFromFit(T,CandidateFit); 
-    %3 get errors
-    CandidateSteps=AddStep_Errors(X,CandidateSteps,initval); 
-    CandidateRelStepErr=(CandidateSteps(:,8)./abs(CandidateSteps(:,5))); 
-    
-    
-    
-    %fetch properties (round number) of original property table
-    %(note: this table is unsorted since it comprises of two rounds)
-    LC=length(CandidateRelStepErr);
-    CandidateRoundNo=zeros(LC,1);
-    for ii=1:LC  
-        idxC=CandidateSteps(ii,1);     
-        sel=find(AllSteps(:,1)==idxC);
-        CandidateRoundNo(ii)=RoundNo(sel(1));
-    end
-    
-    %% Now, choose the final number of steps following default or user-settings criteria
-    %1. DEFAULT:    Keep round1-steps AND 'good enough' round2-steps.
-    %2. OVERSHOOT:  sort steps by error; , adapt above number, relative
-    %3. MANUAL:     sort steps by error, adapt number, absolute. (overrides overshoot): 
 
-
-    % Default: Keep round 1-steps AND 'good' round 2 steps:
-    % Get a   measure for the error of steps in the first round. 
-    % This can be used for reference of errors from second-round steps
-    [~,~,FinalErrorTreshold]=Outlier_flag(CandidateRelStepErr,2,0.8,'positive',0);
-    sel_default=find((CandidateRelStepErr<2*FinalErrorTreshold)|CandidateRoundNo==1);  
-    if (initval.overshoot ~=1)| (initval.setsteps>0) %overshoot adapt
-        N_def=length(sel_default); %number of steps found by default selection       
-        if initval.setsteps>0 
-            N_fin=initval.setsteps;
-            N_fin=min([N_fin ceil(length(X)/4) initval.fitrange]); %limit check            
-        else
-            N_ovsh=ceil(initval.overshoot*N_def);
-            N_ovsh=min([N_ovsh ceil(length(X)/4) initval.fitrange]); %limit check
-            N_fin=N_ovsh;
-        end
-        [~,sortidx]=sort(CandidateRelStepErr); %idxes sorted  by step error, smallest first
-        sel_fin=sortidx(1:N_fin);  %get the most precise steps indices
+    if initval.setsteps==0
+        steps_to_pick=round(initval.overshoot*best_shot);
     else
-        sel_fin=sel_default;
+        steps_to_pick=initval.setsteps;
     end
-    FinalIdxes=CandidateSteps(sel_fin,1); 
+    %select indices to use
+    bestlist=(splitlog(1:steps_to_pick,:));  
+    [candidate_loc,ix]=sort(bestlist(:,1));
+    candidateround_no=bestlist(ix,2);
+
+    %2)Rebuild fit from all indices.
+    candidate_fit=Get_FitFromStepsindices(X,candidate_loc,'mean'); 
+    candidate_steps=Get_StepTableFromFit(T,candidate_fit); 
+    %3 get errors
+    candidate_steps=AddStep_Errors(X,candidate_steps,initval); 
+    candidate_relsteperror=(candidate_steps(:,8)./abs(candidate_steps(:,5))); 
+      
     
+    
+    if (initval.localstepmerge &&~initval.setsteps)
+        % Default: Keep round 1-steps AND 'good' round 2 steps:
+        % Get a   measure for the error of steps in the first round. 
+        % This can be used for reference of errors from second-round steps
+        [~,~,FinalErrorTreshold]=Outlier_flag(candidate_relsteperror,2,0.8,'positive',0);
+        sel_merge=find((candidate_relsteperror<2*FinalErrorTreshold)|candidateround_no==1);        
+        final_idxes=candidate_steps(sel_merge,1); 
+    else
+        final_idxes=candidate_steps(:,1); 
+    end
     %Re-build the fit from the selected indices (Effectively, rejected
     %indices are 'merged' in this step)
-    FinalFit=Get_FitFromStepsindices(X,FinalIdxes,'mean');
+    FinalFit=Get_FitFromStepsindices(X,final_idxes,'mean');
     FinalSteps=Get_StepTableFromFit(T,FinalFit); 
     FinalSteps=AddStep_Errors(X,FinalSteps,initval);
     LF=length(FinalSteps(:,1));
     FinalRoundNo=zeros(LF,1);
     for ii=1:LF
         idxC=FinalSteps(ii,1);
-        sel=find(CandidateSteps(:,1)==idxC);
-        FinalRoundNo(ii)=CandidateRoundNo(sel(1));
+        sel=find(candidate_steps(:,1)==idxC);
+        FinalRoundNo(ii)=candidateround_no(sel(1));
     end        
     FinalSteps(:,9)=FinalRoundNo;   
    
