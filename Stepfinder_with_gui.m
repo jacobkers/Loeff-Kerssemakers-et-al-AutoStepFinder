@@ -110,7 +110,8 @@ function AutoStepFinder(handles)
     initval.setsteps=0;  %(does it work?)%If larger than 0, this will set the numbers of steps to be fitted! 
     initval.CropInputDataFactor=1; %(does it work?)
     initval.showintermediateplots=1; %(does it work?)
-    initval.savestring='mat';
+    initval.savestring='txt';            %'mat'
+    initval.steperrorestimate='measured'  ;% 'predicted';    %'measured'
     
 %% main loop  
  while initval.nextfile>0 
@@ -126,8 +127,8 @@ function AutoStepFinder(handles)
         [FitResidu,~,S_Curve]=StepfinderCore(Residu,initval);       
         steproundaccept=(max(S_Curve)>initval.SMaxTreshold);
         if steproundaccept
-           [Steps, ~, ~]=Get_StepsFromFit_MeanLevel(IndexAxis,Data,FitResidu);
-            Steps=AddStep_Errors(Residu,Steps);  Steps(:,9)=fitround;             
+           [Steps, ~, ~]=Get_StepTableFromFit(IndexAxis,FitResidu);
+            Steps=AddStep_Errors(Residu,Steps,initval);  Steps(:,9)=fitround;             
             AllSteps=[AllSteps; Steps];
         end   
         S_Curves(:,fitround)=S_Curve;
@@ -135,7 +136,7 @@ function AutoStepFinder(handles)
         Fit=Fit+FitResidu ;       %new fit
     end  
     if isempty(AllSteps), disp('No steps found'); else  %Final analysis:      
-    [FinalSteps, FinalFit]=BuildFinalfit_ViaStepErrors(IndexAxis,Data,AllSteps);                 
+    [FinalSteps, FinalFit]=BuildFinalfit_ViaStepErrors(IndexAxis,Data,AllSteps,initval);                 
      SaveAndPlot(   initval,SaveName,handles,...
                             IndexAxis, Data, FinalFit,...
                             S_Curves, FinalSteps);     
@@ -628,9 +629,17 @@ function FitX=Adapt_Fit(f,idx,FitX)
  
     
 %% This section contains code related to the multipass steps
-function StepsX=AddStep_Errors(X,StepsX)   
-%This function calculates the errors associated with the steps via the
-%standard deviation of the surrounding plateaus
+function StepsX=AddStep_Errors(X,StepsX,initval)   
+%This function calculates step errors associated with the steps.
+% Two options: 
+%     1) the standard deviation of the adjacent plateaus
+%     2) the global noise level and the length of these plateaus
+
+if strcmp(initval.steperrorestimate,'predicted')
+    shft=2;
+    globalnoise=nanstd((X(shft:end-X(1:end-shft+1))))/sqrt(2);
+end
+
 [ls,col]=size(StepsX); i1=0;
 for i=1:ls
     i2=StepsX(i);
@@ -638,44 +647,56 @@ for i=1:ls
         i3=StepsX(i+1);
     else 
         i3=length(X);
-    end
-    rmsbefore=std(X(i1+1:i2)); 
-    Nbefore=i2-i1;
-    rmsafter=std(X(i2+1:i3)) ;
+    end    
+    Nbefore=i2-i1;    
     Nafter=i3-i2;
-    StepsX(i,col+1)=2*(rmsbefore^2/Nbefore+rmsafter^2/Nafter)^0.5; %plus minus 95%
+    
+    if strcmp(initval.steperrorestimate,'measured')
+        rmsbefore=std(X(i1+1:i2));
+        rmsafter=std(X(i2+1:i3)) ;
+        StepsX(i,col+1)=2*(rmsbefore^2/Nbefore+rmsafter^2/Nafter)^0.5; %plus minus 95%
+    end
+    if strcmp(initval.steperrorestimate,'predicted')
+        StepsX(i,col+1)=2*(globalnoise^2/Nbefore+globalnoise^2/Nafter)^0.5; %plus minus 95%
+    end
     i1=i2;
 end
 
 
-function [FinalSteps, FinalFit]=BuildFinalfit_ViaStepErrors(T,X,AllSteps)
+function [FinalSteps, FinalFit]=BuildFinalfit_ViaStepErrors(T,X,AllSteps,initval)
 %build a step fit based on all retained indices. Perform step-by-step error
 %analysis to accept second-round (residual) steps or not (first-round steps are always
 %accepted at this stage)
 %1) first, add 
-    [~,ix]=sort(AllSteps(:,1));  %sort by index (ignoring round)
+   %1) sort by index (ignoring round)
+    [~,ix]=sort(AllSteps(:,1));  
     AllSteps=AllSteps(ix,:);
     RoundNo=AllSteps(:,9);
-    CandidateFit=Get_FitFromStepsindices(X,AllSteps(:,1),'mean');
-    CandidateSteps=Get_StepsFromFit_MeanLevel(T,X,CandidateFit); 
-    LC=length(CandidateSteps(:,1));
-    CandidateRoundNo=zeros(LC,1);
-    for ii=1:LC
-        idxC=CandidateSteps(ii,1);
-        sel=find(AllSteps(:,1)==idxC);
-        CandidateRoundNo(ii)=RoundNo(sel(1));
-    end
-    CandidateSteps=AddStep_Errors(X,CandidateSteps);
+    
+    %2) rebuild fit from all indices alone
+    CandidateFit=Get_FitFromStepsindices(X,AllSteps(:,1),'mean'); 
+    CandidateSteps=Get_StepTableFromFit(T,CandidateFit); 
+    CandidateSteps=AddStep_Errors(X,CandidateSteps,initval);
     CandidateRelStepErr=(CandidateSteps(:,8)./abs(CandidateSteps(:,5))); 
     [~,~,FinalErrorTreshold]=Outlier_flag(CandidateRelStepErr,2,0.8,'positive',0);
     
+    
+    %% keep round 1-steps AND 'good' round 2 steps
+    %fetch properties (round number) of original property table
+    LC=length(CandidateSteps(:,1));
+    for ii=1:LC  
+        idxC=CandidateSteps(ii,1);     
+        sel=find(AllSteps(:,1)==idxC);
+        CandidateRoundNo(ii)=RoundNo(sel(1));
+    end
+    
+    CandidateRoundNo=zeros(LC,1);
 
-%% keep round 1-steps AND 'good' round 2 steps
     sel=find((CandidateRelStepErr<2*FinalErrorTreshold)|CandidateRoundNo==1);  
     FinalIdxes=CandidateSteps(sel,1);
     FinalFit=Get_FitFromStepsindices(X,FinalIdxes,'mean');
-    FinalSteps=Get_StepsFromFit_MeanLevel(T,X,FinalFit); 
-    FinalSteps=AddStep_Errors(X,FinalSteps);
+    FinalSteps=Get_StepTableFromFit(T,FinalFit); 
+    FinalSteps=AddStep_Errors(X,FinalSteps,initval);
     LF=length(FinalSteps(:,1));
     FinalRoundNo=zeros(LF,1);
     for ii=1:LF
@@ -757,7 +778,7 @@ function [Data,SaveName,initval]=Get_Data(initval);
         end    
         
         
- function [StepsX,levelX, histX]=Get_StepsFromFit_MeanLevel(T,X,FitX);
+ function [StepsX,levelX, histX]=Get_StepTableFromFit(T,FitX);
 %This function builds tables of steps or levels properties from a step fit
 %Values are based on Averages of plateaus
     lx=length(FitX);
