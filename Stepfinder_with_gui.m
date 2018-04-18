@@ -112,10 +112,9 @@ function AutoStepFinder(handles)
     initval.CropInputDataFactor=1; %(does it work?)
     initval.showintermediateplots=1; %(does it work?)
     initval.savestring='txt';            %'mat'
-    initval.steperrorestimate='measured'  ;% 'predicted';    %'measured'
+    initval.steperrorestimate='predicted'  ;% 'predicted';    %'measured'
     
 %% main loop 
-
  while initval.nextfile>0 
     [Data,SaveName,initval]=Get_Data(initval);
     tic
@@ -152,8 +151,9 @@ function AutoStepFinder(handles)
                             S_Curves, FinalSteps);     
      end        
      disp('done!');
+     toc
 end
-toc
+
 
 
 
@@ -542,7 +542,7 @@ function [FitX,f,S,splitlog]=Split_until_ready(X,initval)
     aqm=(inxt-istart+1)*avl^2+(istop-inxt)*avr^2;   %sum of squared averages anti-plateaus, startvalue
     S(c)=(qx-aqm)/(qx-qm);                          %S: ratio of variances of fit and anti-fit        
     %---------------------------------       
-    wm=5;  %minimum plateau length to split
+    wm=3;  %minimum plateau length to split
      while stop==0; %Split until ready----------------------------------
         c=c+1;
         fsel=find((f(:,2)-f(:,1)>wm)&f(:,6)~=0);        %among those plateaus sensibly long..
