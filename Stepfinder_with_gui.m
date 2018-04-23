@@ -30,7 +30,7 @@ function varargout = Stepfinder_with_gui(varargin)
 
 % Edit the above text to modify the response to help Stepfinder_with_gui
 
-% Last Modified by GUIDE v2.5 18-Nov-2016 11:57:42
+% Last Modified by GUIDE v2.5 23-Apr-2018 11:15:44
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -70,18 +70,16 @@ function AutoStepFinder(handles)
      %% Parameters set in GUI
     initval.datapath        = get(handles.data_path, 'string');         %Data path    
     initval.codefolder      = pwd;    
-    initval.GlobalErrorAccept=0.1;                                       %User value for accepting a split or merge round solution
+    initval.GlobalErrorAccept=0.1;                                      %User value for accepting a split or merge round solution
     
     initval.SMaxTreshold    = str2double(get(handles.SMaxTreshold,...   %Threshold for second round of fitting
                               'string')); 
-    initval.overshoot       = str2double(get(handles.overshoot,...      %Increase of decrease the number to-be-fitted steps relative to the determined optimum.
-                              'string'));     
+    initval.overshoot       = str2double(get(handles.pitch,...          %Increase of decrease the number to-be-fitted steps relative to the determined optimum.
+                              'string'));       
     initval.fitrange        = str2double(get(handles.fitrange,...       %Number of steps to be fitted
                               'string'));       
     initval.stepnumber      = initval.fitrange; 
-    initval.nextfile        = 1;
-    initval.steprepulsion   = str2double(get(handles.steprepulsion,...  %This term prevents very small steps (2 sample points) to be fitted
-                              'string'));                                   
+    initval.nextfile        = 1;                                
     initval.resolution      = str2double(get(handles.res_mes,...        %Resolution of measurement
                               'string'));      
     initval.meanbase        = str2double(get(handles.meanbase,...       %Mean value of the base line
@@ -93,13 +91,23 @@ function AutoStepFinder(handles)
     initval.fitmean         = get(handles.fitmean,'Value');             %Use mean for fitting
     initval.fitmedian       = get(handles.fitmedian,'Value');           %Use median for fitting
     initval.treshonoff      = get(handles.basetreshon,'Value');         %Turn base line treshholding on/ off
-    if initval.treshonoff == 1
+    initval.txtoutput       = get(handles.txtoutput,'Value');           %Output .txt files
+    initval.matoutput       = get(handles.matoutput,'Value');           %Output .mat files
+    initval.setsteps        = str2double(get(handles.manualmodesteps,...%Resolution of measurement
+                              'string'));
+    initval.parametersout   = get(handles.parametersout,'Value');       %Save parameters output file.
+    initval.fitsoutput      = get(handles.fitsoutput,'Value');          %Save fits output file.
+    initval.propoutput      = get(handles.propoutput,'Value');          %Save properties output file.
+    initval.scurvesoutput   = get(handles.scurvesoutput,'Value');       %Save S-curves output file.
+    initval.manualoff       = get(handles.manualoff,'Value');
+    initval.manualon        = get(handles.manualon,'Value');
+    if initval.treshonoff   == 1
       initval.basetresh     = initval.meanbase*initval.overbase;        %Treshhold the mean of your base line
     else
       initval.basetresh     = -100000;
     end       
     initval.singlerun       = get(handles.singrun,'Value');             %Single or batch run
-    if initval.singlerun  == 1
+    if initval.singlerun    == 1
       initval.hand_load     =  1;                                       %Single Run
     else    
       initval.hand_load     =  2;                                       %Batch Run
@@ -107,13 +115,11 @@ function AutoStepFinder(handles)
     end 
            
 %% Hidden parameters (not on the GUI) for advanced use  
-    initval.setsteps=0;  %%If larger than 0, this will set the numbers of steps to be fitted! 
-    initval.localstepmerge=1;  %if larger than 0, weird steps are removed from fit
-    initval.CropInputDataFactor=1; %(does it work?)
-    initval.showintermediateplots=1; %(does it work?)
-    initval.savestring='txt';            %'mat'
-    initval.steperrorestimate='predicted'  ;% 'predicted';    %'measured'
-    
+    initval.localstepmerge=1;                                           %if larger than 0, weird steps are removed from fit
+    initval.CropInputDataFactor=1;                                      %(does it work?)
+    initval.showintermediateplots=1;                                    %(does it work?)
+    initval.steperrorestimate='predicted';                              % 'predicted';    %'measured'
+    initval.steprepulsion = 0.1                                         %This term prevents very small steps (2 sample points) to be fitted
 %% main loop 
  while initval.nextfile>0 
     [Data,SaveName,initval]=Get_Data(initval);
@@ -168,23 +174,38 @@ cla(handles.plot_fit);
 axis(handles.plot_fit);
 plot(0,0);
 set(handles.figure1, 'units', 'normalized', 'position', [0.01 1 0.7 0.5]);
-movegui('northwest')
+movegui('northwest');
 xlabel('Time (s)','FontSize',12);                                       %Do not rotate xlabel
 ylabel('Position (A.U.)','FontSize',12, 'rot', 90);                     %Rotate ylabel
 set(gca,'TickDir','out','TickLength',[0.003 0.0035],'box', 'off');      %Ticks outslide plotting area
 set(handles.PostPros, 'Visible','Off'); 
 set(handles.AdvancedSettings,'Visible','Off');
+set(handles.fileextbox,'Visible','Off');
+set(handles.customoutputbox,'Visible','Off');
 set(handles.AdvancedFitting,'Visible','Off');
 set(handles.Scurve_eval,'Visible','Off');
-set(handles.advancedoff,'Value',1)
-set(handles.Scurve_eval,'Visible','Off')
-StepRep = 0.1;
-set(handles.steprepulsion, 'String', StepRep)
-set(handles.fitmean,'Value',1)
-set(handles.scruveevaloff,'Value',1)
+set(handles.advancedoff,'Value',1);
+set(handles.Scurve_eval,'Visible','Off');
+set(handles.customcontrol,'Value',0);
+set(handles.customoutoff,'Value',1);
+set(handles.fitmean,'Value',1);
+set(handles.txtoutput,'Value',1);
+set(handles.manualmodesteps,'enable','Off');
+set(handles.manualon,'value',0);
+set(handles.manualoff,'value',1);
+set(handles.scruveevaloff,'Value',1);
 set(handles.singrun,'Value',1);
 set(handles.userpltoff,'Value',1);
-
+set(handles.parametersout,'Value',1);
+set(handles.fitsoutput,'Value',1);
+set(handles.propoutput,'Value',1);
+set(handles.scurvesoutput,'Value',1);
+set(handles.parametersout,'enable','Off');
+set(handles.fitsoutput,'enable','Off');
+set(handles.propoutput,'enable','Off');
+set(handles.scurvesoutput,'enable','Off');
+set(handles.manualmodesteps,'string',1);
+set(handles.SMaxTreshold,'string',0.15);
 % Choose default command line output for Stepfinder_with_gui
 handles.output = hObject;
 % Update handles structure
@@ -242,7 +263,18 @@ function fitrange_Callback(hObject, eventdata, handles)
 % hObject    handle to fitrange (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+fitrange=get(hObject,'String');
+checkrange=isnan(str2double(fitrange));
+     if checkrange==1
+         msgbox('The provided input for fit range is not a number.','ERROR', 'error')
+     return;
+     end    
+   
+ 
 
+
+     
+     
 % Hints: get(hObject,'String') returns contents of fitrange as text
 %        str2double(get(hObject,'String')) returns contents of fitrange as a double
 
@@ -265,7 +297,12 @@ function res_mes_Callback(hObject, eventdata, handles)
 % hObject    handle to res_mes (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-
+checktimeres=get(hObject,'String');
+checktimeres=isnan(str2double(checktimeres));
+     if checktimeres==1
+         msgbox('The provided input for the time resolution parameter is not a number.','ERROR', 'error')
+     return;
+     end
 % Hints: get(hObject,'String') returns contents of res_mes as text
 %        str2double(get(hObject,'String')) returns contents of res_mes as a double
 
@@ -288,7 +325,12 @@ function SMaxTreshold_Callback(hObject, eventdata, handles)
 % hObject    handle to SMaxTreshold (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-
+checksmax=get(hObject,'String');
+checksmax=isnan(str2double(checksmax));
+     if checksmax==1;
+         msgbox('The provided input for the acceptance threshold parameter is not a number.','ERROR', 'error')
+     return;
+     end
 % Hints: get(hObject,'String') returns contents of SMaxTreshold as text
 %        str2double(get(hObject,'String')) returns contents of SMaxTreshold as a double
 
@@ -305,41 +347,23 @@ if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgr
     set(hObject,'BackgroundColor','white');
 end
 
-
-
-function steprepulsion_Callback(hObject, eventdata, handles)
-% hObject    handle to steprepulsion (see GCBO)
+function pitch_Callback(hObject, eventdata, handles)
+% hObject    handle to pitch (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-
-% Hints: get(hObject,'String') returns contents of steprepulsion as text
-%        str2double(get(hObject,'String')) returns contents of steprepulsion as a double
+checkpitch=get(hObject,'String');
+checkpitch=isnan(str2double(checkpitch));
+     if checkpitch==1;
+         msgbox('The provided input for the pitch parameter is not a number.','ERROR', 'error')
+     return;
+     end
+% Hints: get(hObject,'String') returns contents of pitch as text
+%        str2double(get(hObject,'String')) returns contents of pitch as a double
 
 
 % --- Executes during object creation, after setting all properties.
-function steprepulsion_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to steprepulsion (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: edit controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
-
-function overshoot_Callback(hObject, eventdata, handles)
-% hObject    handle to overshoot (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: get(hObject,'String') returns contents of overshoot as text
-%        str2double(get(hObject,'String')) returns contents of overshoot as a double
-
-
-% --- Executes during object creation, after setting all properties.
-function overshoot_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to overshoot (see GCBO)
+function pitch_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to pitch (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
 
@@ -372,7 +396,12 @@ function meanbase_Callback(hObject, eventdata, handles)
 % hObject    handle to meanbase (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-
+checkmeanbase=get(hObject,'String');
+checkmeanbase=isnan(str2double(checkmeanbase));
+     if checkmeanbase==1;
+         msgbox('The provided input for mean base line is not a number.','ERROR', 'error')
+     return;
+     end
 % Hints: get(hObject,'String') returns contents of meanbase as text
 %        str2double(get(hObject,'String')) returns contents of meanbase as a double
 
@@ -404,7 +433,12 @@ function baseover_Callback(hObject, eventdata, handles)
 % hObject    handle to baseover (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-
+checkbaseover=get(hObject,'String');
+checkbaseover=isnan(str2double(checkbaseover));
+     if checkbaseover==1;
+         msgbox('The provided input for the error parameter is not a number.','ERROR', 'error')
+     return;
+     end
 % Hints: get(hObject,'String') returns contents of baseover as text
 %        str2double(get(hObject,'String')) returns contents of baseover as a double
 
@@ -448,19 +482,37 @@ function paneladv_SelectionChangedFcn(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 initval.AdvancedOn=get(handles.advancedon,'Value');
 if initval.AdvancedOn == 1
-       set(handles.AdvancedSettings,'Visible','On')
-       set(handles.AdvancedFitting,'Visible','On')
-       set(handles.Scurve_eval,'Visible','On')
+       set(handles.AdvancedSettings,'Visible','On');
+       set(handles.AdvancedFitting,'Visible','On');
+       set(handles.Scurve_eval,'Visible','On');
+       set(handles.fileextbox,'Visible','On');
+       set(handles.customoutputbox,'Visible','On');
+       set(handles.customcontrol,'Value',0);
+       set(handles.manualoff,'value',1);
 end
 initval.AdvancedOff=get(handles.advancedoff,'Value');
 if initval.AdvancedOff == 1
-       set(handles.AdvancedSettings,'Visible','Off')
-       set(handles.AdvancedFitting,'Visible','Off')
-       set(handles.Scurve_eval,'Visible','Off')
-       StepRep = 0.1;
-       set(handles.steprepulsion, 'String', StepRep)
-       set(handles.fitmean,'Value',1)
-       set(handles.scruveevaloff,'Value',1)
+       set(handles.AdvancedSettings,'Visible','Off');
+       set(handles.AdvancedFitting,'Visible','Off');
+       set(handles.Scurve_eval,'Visible','Off');
+       set(handles.fileextbox,'Visible','Off');
+       set(handles.customoutputbox,'Visible','Off');
+       set(handles.fitmean,'Value',1);
+       set(handles.scruveevaloff,'Value',1);
+       set(handles.customoutoff,'Value',1);
+       set(handles.parametersout,'Value',1);
+       set(handles.fitsoutput,'Value',1);
+       set(handles.propoutput,'Value',1);
+       set(handles.scurvesoutput,'Value',1);
+       set(handles.parametersout,'enable','Off');
+       set(handles.fitsoutput,'enable','Off');
+       set(handles.propoutput,'enable','Off');
+       set(handles.scurvesoutput,'enable','Off');
+       set(handles.manualmodesteps,'string',1);
+       set(handles.manualmodesteps,'enable','Off');
+       set(handles.manualon,'value',0);
+       set(handles.txtoutput,'Value',1);
+       set(handles.SMaxTreshold,'string',0.15);
 end
 
 % --- Executes when figure1 is resized.
@@ -670,7 +722,7 @@ function StepsX=AddStep_Errors(X,StepsX,initval)
 
 if strcmp(initval.steperrorestimate,'predicted')
     shft=2;
-    globalnoise=nanstd((X(shft:end-X(1:end-shft+1))))/sqrt(2);
+    globalnoise=nanstd((X(shft:end)-X(1:end-shft+1)))/sqrt(2);
 end
 
 [ls,col]=size(StepsX); i1=0;
@@ -701,9 +753,10 @@ function [FinalSteps, FinalFit]=BuildFinalfitViaStepErrors(T,X,splitlog,best_sho
 %analysis to accept second-round (residual) steps or not (first-round steps are always
 %accepted at this stage)
 
-    if initval.setsteps==0
+    if (initval.manualoff==1 && initval.manualon==0)
         steps_to_pick=round(initval.overshoot*best_shot);
-    else
+    end
+    if (initval.manualoff==0 && initval.manualon==1)
         steps_to_pick=initval.setsteps;
     end
     %select indices to use
@@ -720,7 +773,7 @@ function [FinalSteps, FinalFit]=BuildFinalfitViaStepErrors(T,X,splitlog,best_sho
       
     
     
-    if (initval.localstepmerge &&~initval.setsteps)
+    if (initval.localstepmerge && ~initval.setsteps)
         % Default: Keep round 1-steps AND 'good' round 2 steps:
         % Get a   measure for the error of steps in the first round. 
         % This can be used for reference of errors from second-round steps
@@ -979,26 +1032,49 @@ disp('Saving Files...')
       
       curpth=pwd;
       cd(initval.SaveFolder);
+      
+      if initval.txtoutput == 1
+      initval.savestring='txt';
+      end
+      
+      if initval.matoutput == 1
+      initval.savestring='mat';
+      end
+      
       switch initval.savestring
           case 'txt'  
+              
+               
               fits_table                = table(Time, Data, FinalFit);          %Save variables in table           
               properties_table          = table(IndexStep,TimeStep,...          %Save variables in table
                                           LevelBefore,LevelAfter,StepSize,...
-                                          DwellTimeStepBefore,DwellTimeStepAfter,StepError); 
+                                          DwellTimeStepBefore,DwellTimeStepAfter,StepError);
                SCurve_table              = table(Stepnumber, SCurveRound1,...    %Save variables in table 
                                           SCurveRound2);                         
+       if initval.fitsoutput == 1
                writetable(fits_table, [SaveName,'_fits.txt']);                   %Save table containing fits                       
+       end
+       if initval.propoutput == 1
                writetable(properties_table, [SaveName,'_properties.txt']);       %Save table containing properties                          
+       end
+       if initval.scurvesoutput == 1
                writetable(SCurve_table, [SaveName,'_SCurve.txt']);               %Save table containing S-curves     
-          case 'mat'
+       end
+           case 'mat'
+       if initval.fitsoutput == 1       
               save([SaveName,'_fits'],'Time', 'Data', 'FinalFit'); 
+       end
+       if initval.propoutput == 1
               save([SaveName,'_properties'],...
                  'IndexStep','TimeStep',...   
                  'LevelBefore','LevelAfter','StepSize',...
                  'DwellTimeStepBefore','DwellTimeStepAfter',...
                  'StepError');
-              save([SaveName,'_SCurve'],...
+       end
+       if initval.scurvesoutput == 1 
+               save([SaveName,'_SCurve'],...
                  'Stepnumber', 'SCurveRound1','SCurveRound2');
+       end
       end
       cd(curpth);
 
@@ -1208,14 +1284,156 @@ figure('Name','User plots','NumberTitle','off','units', 'normalized', 'position'
     ylim([0 ylimstep]);
     xlim([-1 1]);
     
+% --- Executes on button press in fitsoutput.
+function fitsoutput_Callback(hObject, eventdata, handles)
+% hObject    handle to fitsoutput (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+
+% Hint: get(hObject,'Value') returns toggle state of fitsoutput
+
+
+% --- Executes on button press in propoutput.
+function propoutput_Callback(hObject, eventdata, handles)
+% hObject    handle to propoutput (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hint: get(hObject,'Value') returns toggle state of propoutput
+
+
+% --- Executes on button press in scurvesoutput.
+function scurvesoutput_Callback(hObject, eventdata, handles)
+% hObject    handle to scurvesoutput (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hint: get(hObject,'Value') returns toggle state of scurvesoutput
+
+
+% --- Executes on button press in parametersout.
+function parametersout_Callback(hObject, eventdata, handles)
+% hObject    handle to parametersout (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hint: get(hObject,'Value') returns toggle state of parametersout
+
+
+
+function manualmodesteps_Callback(hObject, eventdata, handles)
+% hObject    handle to manualmodesteps (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+manualmode=get(hObject,'String');
+checkmm=isnan(str2double(manualmode));
+if checkmm==1;
+         msgbox('The provided input for manual mode is not a number.','ERROR', 'error')
+     return;
+end
+mmnumber=str2num(manualmode);
+if mmnumber < 1;
+         msgbox('The provided input for manual mode is smaller than 1.','ERROR', 'error')
+     return;     
+end   
+
+
+% Hints: get(hObject,'String') returns contents of manualmodesteps as text
+%        str2double(get(hObject,'String')) returns contents of manualmodesteps as a double
+
+
+% --- Executes during object creation, after setting all properties.
+function manualmodesteps_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to manualmodesteps (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+% --- Executes on button press in manualmodebut.
+function manualmodebut_Callback(hObject, eventdata, handles)
+% hObject    handle to manualmodebut (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+set(handles.manualmodesteps,'enable','On')
+% Hint: get(hObject,'Value') returns toggle state of manualmodebut
+
+
+% --- Executes during object creation, after setting all properties.
+function fileextbox_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to fileextbox (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+
+% --- Executes during object creation, after setting all properties.
+function customoutputbox_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to customoutputbox (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% --- Executes on button press in customcontrol.
+function customcontrol_Callback(hObject, eventdata, handles)
+% hObject    handle to customcontrol (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+set(handles.parametersout,'enable','On')
+set(handles.fitsoutput,'enable','On')
+set(handles.propoutput,'enable','On')
+set(handles.scurvesoutput,'enable','On')
+% Hint: get(hObject,'Value') returns toggle state of customcontrol
+
+
+% --- Executes during object creation, after setting all properties.
+function customcontrol_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to customcontrol (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+
+% --- Executes during object creation, after setting all properties.
+function customoutoff_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to customoutoff (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+
+% --- Executes on button press in customoutoff.
+function customoutoff_Callback(hObject, eventdata, handles)
+% hObject    handle to customoutoff (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+set(handles.parametersout,'enable','Off')
+set(handles.fitsoutput,'enable','Off')
+set(handles.propoutput,'enable','Off')
+set(handles.scurvesoutput,'enable','Off')
+% Hint: get(hObject,'Value') returns toggle state of customoutoff
+
     
- 
-     
 
 
+% --- Executes on button press in manualon.
+function manualon_Callback(hObject, eventdata, handles)
+% hObject    handle to manualon (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+set(handles.manualmodesteps,'enable','On')
+set(handles.manualoff,'value',0)
+% Hint: get(hObject,'Value') returns toggle state of manualon
 
 
-
-
-
-
+% --- Executes on button press in manualoff.
+function manualoff_Callback(hObject, eventdata, handles)
+% hObject    handle to manualoff (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+set(handles.manualmodesteps,'enable','Off')
+set(handles.manualon,'value',0)
+set(handles.manualmodesteps,'string',1);
+% Hint: get(hObject,'Value') returns toggle state of manualoff
