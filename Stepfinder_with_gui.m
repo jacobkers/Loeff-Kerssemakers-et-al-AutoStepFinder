@@ -985,14 +985,14 @@ disp('Saving Files...')
         initval.SaveFolder                 =  ['StepFit_Result'];        %Make new folder to save results
         initval.SaveFolder                 =  fullfile(initval.datapath, initval.SaveFolder);
          if ~exist(initval.SaveFolder, 'dir')                                   %Check if folder already exists
-         mkdir(initval.SaveFolder);                                             %If not create new folder
+         mkdir(initval.SaveFolder);                                             %If not create new folder 
          end    
-    
     
     %Fits
       Time                      = IndexAxis*initval.resolution;                 %Time Axis 
       
     %S-Curve
+      S_Curves=S_Curves(2:end,:);                                       %crop
       Stepnumber                = (1:1:length(S_Curves))';              %Stepnumbers
       SCurveRound1              = S_Curves(:,1);                        %S-Curve round 1
       SCurveRound2              = S_Curves(:,2);                        %S-Curve round 2
@@ -1023,14 +1023,46 @@ disp('Saving Files...')
       end
       
       switch initval.savestring
-          case 'txt'  
-              
+          case 'txt' 
+            % CropInputDataFactor: 1
+            % GlobalErrorAccept: 0.1000
+            % SMaxTreshold: 0.1500
+            % basetresh: -100000
+            % fitmean: 1
+            % fitmedian: 0
+            % fitrange: 4000
+            % fitsoutput: 1
+            % initval.hand_load: 1
+            % localstepmerge: 1
+            % manualoff: 1
+            % manualon: 0
+            % matoutput: 0
+            % meanbase: 0
+            % nextfile: 0
+            % overbase: 1.1000
+            % overshoot: 1
+            % parametersout: 1
+            % propoutput: 1
+            % resolution: 1
+            % savestring: 'txt'
+            % scurve_eval: 0
+            % scurvesoutput: 1
+            % setsteps: 1
+            % showintermediateplots: 1
+            % singlerun: 1
+            % steperrorestimate: 'predicted'
+            % stepnumber: 1000
+            % steprepulsion: 0.1000
+            % treshonoff: 0
+            % txtoutput: 1
+            % userplt: 0
+              config_table              = struct2table(orderfields(initval));
                
               fits_table                = table(Time, Data, FinalFit);          %Save variables in table           
               properties_table          = table(IndexStep,TimeStep,...          %Save variables in table
                                           LevelBefore,LevelAfter,StepSize,...
                                           DwellTimeStepBefore,DwellTimeStepAfter,StepError);
-               SCurve_table              = table(Stepnumber, SCurveRound1,...    %Save variables in table 
+               s_curve_table              = table(Stepnumber, SCurveRound1,...    %Save variables in table 
                                           SCurveRound2);                         
        if initval.fitsoutput == 1
                writetable(fits_table, [SaveName,'_fits.txt']);                   %Save table containing fits                       
@@ -1039,8 +1071,14 @@ disp('Saving Files...')
                writetable(properties_table, [SaveName,'_properties.txt']);       %Save table containing properties                          
        end
        if initval.scurvesoutput == 1
-               writetable(SCurve_table, [SaveName,'_SCurve.txt']);               %Save table containing S-curves     
+               writetable(s_curve_table, [SaveName,'_s_curve.txt']);               %Save table containing S-curves     
        end
+       
+       if initval.parametersout == 1
+               writetable(config_table, [SaveName,'_config.txt']);               %Save table containing S-curves     
+       end
+       
+       
            case 'mat'
        if initval.fitsoutput == 1       
               save([SaveName,'_fits'],'Time', 'Data', 'FinalFit'); 
@@ -1053,9 +1091,14 @@ disp('Saving Files...')
                  'StepError');
        end
        if initval.scurvesoutput == 1 
-               save([SaveName,'_SCurve'],...
+               save([SaveName,'_s_curve'],...
                  'Stepnumber', 'SCurveRound1','SCurveRound2');
        end
+       if initval.parametersout == 1
+              save([SaveName,'_config'],...
+                 'initval');   
+       end
+       
       end
       cd(curpth);
 
@@ -1113,6 +1156,8 @@ disp('Saving Files...')
             [initval.SaveFolder '\' SaveName '_User_plot.jpg']);
             end
         end
+        
+        
 
  %% Plotting S-Curve Evaluation
         if initval.scurve_eval==1                                          
@@ -1135,11 +1180,11 @@ disp('Saving Files...')
     plot(Stepnumber,SCurveRound1,'k-', 'LineWidth',1); hold on
     plot(Stepnumber,SCurveRound2,'b-', 'LineWidth',1); hold on
     plot(Stepnumber,TreshHold,'r--', 'LineWidth',1);
-    plot(stepno_round1+1,SCurveRound1(stepno_round1+1),'ko','MarkerFaceColor','k','MarkerSize',6);
-    plot(stepno_round2+1,SCurveRound2(stepno_round2+1),'bo','MarkerFaceColor','b','MarkerSize',6);   
-    plot(stepno_final+1,SCurveRound1(stepno_final+1),'ro','MarkerSize',10);
-    
-   
+    plot(stepno_round1,SCurveRound1(stepno_round1),'ko','MarkerFaceColor','k','MarkerSize',6);
+    if stepno_round2>0, plotidx=stepno_round2, else plotidx=1;end
+    plot(plotidx,SCurveRound2(plotidx),'bo','MarkerFaceColor','b','MarkerSize',6);   
+    plot(stepno_final,SCurveRound1(stepno_final),'ro','MarkerSize',12);
+
 
     xlim([0 LS]); 
     ylim([0 MK]);
