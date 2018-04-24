@@ -119,46 +119,14 @@ function AutoStepFinder(handles)
     initval.CropInputDataFactor=1;                                      %(does it work?)
     initval.showintermediateplots=1;                                    %(does it work?)
     initval.steperrorestimate='predicted';                              % 'predicted';    %'measured'
-    initval.steprepulsion = 0.1                                         %This term prevents very small steps (2 sample points) to be fitted
-%% main loop 
- while initval.nextfile>0 
-    [Data,SaveName,initval]=Get_Data(initval);
-    tic
-    LD=length(Data);
-    IndexAxis=(1:LD)';     
-    stepnumber_firstrun=min([ceil(LD/4) initval.fitrange]);        
-    Residu=Data;  Fit=0*Data;
-    S_Curves=zeros(stepnumber_firstrun+1,2); 
-    N_found_steps_per_round=zeros(2,1); 
-    full_split_log=[];
-    for fitround=1:2
-        initval.stepnumber=stepnumber_firstrun;                         
-        [FitResidu,~,S_Curve,split_indices,best_shot]=StepfinderCore(Residu,initval);       
-        steproundaccept=(max(S_Curve)>initval.SMaxTreshold);
-        if steproundaccept
-           N_found_steps_per_round(fitround)=best_shot;         
-           full_split_log=expand_split_log(full_split_log,split_indices,fitround,best_shot);           
-         end   
-        S_Curves(:,fitround)=S_Curve;
-        Residu=Residu-FitResidu;  %new residu  
-        Fit=Fit+FitResidu ;       %new fit
-    end    
+    initval.steprepulsion = 0.1;                                         %This term prevents very small steps (2 sample points) to be fitted
+
+ %% Main loop 
+    autostepfinder_mainloop(initval,handles);
+
     
-    %Final analysis: 
-    if max(N_found_steps_per_round)==0, disp('No steps found'); else          
-    [FinalSteps, FinalFit]=BuildFinalfit(IndexAxis,Data,full_split_log,initval);                 
-     SaveAndPlot(   initval,SaveName,handles,...
-                            IndexAxis, Data, FinalFit,...
-                            S_Curves, FinalSteps,N_found_steps_per_round);     
-     end        
-     disp('done!');
-     toc
-end
 
-
-
-
-%% --- Executes just before Stepfinder_with_gui is made visible.
+%% Executes just before Stepfinder_with_gui is made visible.
 function Stepfinder_with_gui_OpeningFcn(hObject, eventdata, handles, varargin)
 % This function has no output args, see OutputFcn.
 % hObject    handle to figure
@@ -220,7 +188,159 @@ function varargout = Stepfinder_with_gui_OutputFcn(hObject, eventdata, handles)
 % Get default command line output from handles structure
 varargout{1} = handles.output;
 
+% --- Executes on button press in fitsoutput.
+function fitsoutput_Callback(hObject, eventdata, handles)
+% hObject    handle to fitsoutput (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
 
+
+% Hint: get(hObject,'Value') returns toggle state of fitsoutput
+
+
+% --- Executes on button press in propoutput.
+function propoutput_Callback(hObject, eventdata, handles)
+% hObject    handle to propoutput (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hint: get(hObject,'Value') returns toggle state of propoutput
+
+
+% --- Executes on button press in scurvesoutput.
+function scurvesoutput_Callback(hObject, eventdata, handles)
+% hObject    handle to scurvesoutput (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hint: get(hObject,'Value') returns toggle state of scurvesoutput
+
+
+% --- Executes on button press in parametersout.
+function parametersout_Callback(hObject, eventdata, handles)
+% hObject    handle to parametersout (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hint: get(hObject,'Value') returns toggle state of parametersout
+
+
+
+function manualmodesteps_Callback(hObject, eventdata, handles)
+% hObject    handle to manualmodesteps (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+manualmode=get(hObject,'String');
+checkmm=isnan(str2double(manualmode));
+if checkmm==1;
+         msgbox('The provided input for manual mode is not a number.','ERROR', 'error')
+     return;
+end
+mmnumber=str2num(manualmode);
+if mmnumber < 1;
+         msgbox('The provided input for manual mode is smaller than 1.','ERROR', 'error')
+     return;     
+end   
+
+
+% Hints: get(hObject,'String') returns contents of manualmodesteps as text
+%        str2double(get(hObject,'String')) returns contents of manualmodesteps as a double
+
+
+% --- Executes during object creation, after setting all properties.
+function manualmodesteps_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to manualmodesteps (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+% --- Executes on button press in manualmodebut.
+function manualmodebut_Callback(hObject, eventdata, handles)
+% hObject    handle to manualmodebut (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+set(handles.manualmodesteps,'enable','On')
+% Hint: get(hObject,'Value') returns toggle state of manualmodebut
+
+
+% --- Executes during object creation, after setting all properties.
+function fileextbox_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to fileextbox (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+
+% --- Executes during object creation, after setting all properties.
+function customoutputbox_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to customoutputbox (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% --- Executes on button press in customcontrol.
+function customcontrol_Callback(hObject, eventdata, handles)
+% hObject    handle to customcontrol (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+set(handles.parametersout,'enable','On')
+set(handles.fitsoutput,'enable','On')
+set(handles.propoutput,'enable','On')
+set(handles.scurvesoutput,'enable','On')
+% Hint: get(hObject,'Value') returns toggle state of customcontrol
+
+
+% --- Executes during object creation, after setting all properties.
+function customcontrol_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to customcontrol (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+
+% --- Executes during object creation, after setting all properties.
+function customoutoff_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to customoutoff (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+
+% --- Executes on button press in customoutoff.
+function customoutoff_Callback(hObject, eventdata, handles)
+% hObject    handle to customoutoff (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+set(handles.parametersout,'enable','Off')
+set(handles.fitsoutput,'enable','Off')
+set(handles.propoutput,'enable','Off')
+set(handles.scurvesoutput,'enable','Off')
+% Hint: get(hObject,'Value') returns toggle state of customoutoff
+
+    
+
+
+% --- Executes on button press in manualon.
+function manualon_Callback(hObject, eventdata, handles)
+% hObject    handle to manualon (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+set(handles.manualmodesteps,'enable','On')
+set(handles.manualoff,'value',0)
+% Hint: get(hObject,'Value') returns toggle state of manualon
+
+
+% --- Executes on button press in manualoff.
+function manualoff_Callback(hObject, eventdata, handles)
+% hObject    handle to manualoff (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+set(handles.manualmodesteps,'enable','Off')
+set(handles.manualon,'value',0)
+set(handles.manualmodesteps,'string',1);
+% Hint: get(hObject,'Value') returns toggle state of manualoff
 
 function edit1_Callback(hObject, eventdata, ~)
 % hObject    handle to edit1 (see GCBO)
@@ -264,12 +384,7 @@ checkrange=isnan(str2double(fitrange));
          msgbox('The provided input for fit range is not a number.','ERROR', 'error')
      return;
      end    
-   
- 
-
-
-     
-     
+       
 % Hints: get(hObject,'String') returns contents of fitrange as text
 %        str2double(get(hObject,'String')) returns contents of fitrange as a double
 
@@ -517,6 +632,48 @@ function figure1_SizeChangedFcn(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 
 
+ 
+
+
+
+
+
+
+ function autostepfinder_mainloop(initval,handles)
+ %This is the main, multi-pass loop of the autostepfinder
+ while initval.nextfile>0 
+    [Data,SaveName,initval]=Get_Data(initval);
+    tic
+    LD=length(Data);
+    IndexAxis=(1:LD)';     
+    stepnumber_firstrun=min([ceil(LD/4) initval.fitrange]);        
+    Residu=Data;  Fit=0*Data;
+    S_Curves=zeros(stepnumber_firstrun+1,2); 
+    N_found_steps_per_round=zeros(2,1); 
+    full_split_log=[];
+    for fitround=1:2
+        initval.stepnumber=stepnumber_firstrun;                         
+        [FitResidu,~,S_Curve,split_indices,best_shot]=StepfinderCore(Residu,initval);       
+        steproundaccept=(max(S_Curve)>initval.SMaxTreshold);
+        if steproundaccept
+           N_found_steps_per_round(fitround)=best_shot;         
+           full_split_log=expand_split_log(full_split_log,split_indices,fitround,best_shot);           
+         end   
+        S_Curves(:,fitround)=S_Curve;
+        Residu=Residu-FitResidu;  %new residu  
+        Fit=Fit+FitResidu ;       %new fit
+    end    
+    
+    %Final analysis: 
+    if max(N_found_steps_per_round)==0, disp('No steps found'); else          
+    [FinalSteps, FinalFit]=BuildFinalfit(IndexAxis,Data,full_split_log,initval);                 
+     SaveAndPlot(   initval,SaveName,handles,...
+                            IndexAxis, Data, FinalFit,...
+                            S_Curves, FinalSteps,N_found_steps_per_round);     
+     end        
+     disp('done!');
+     toc
+ end
 
 
 
@@ -551,7 +708,7 @@ if nargin<2
 end
 
 
-function [bestshot,S_fin]=Eval_Scurve(S_raw);
+function [bestshot,S_fin]=Eval_Scurve(S_raw)
     S_raw(S_raw<1)=1; S2=S_raw-1;  %remove base line
     BaseLine=linspace(0,S2(end),length(S2)); S3=S2-BaseLine';
     %S4=smooth(S3,ceil(ix/25));
@@ -594,7 +751,7 @@ function [FitX,f,S,splitlog]=Split_until_ready(X,initval)
     S(c)=(qx-aqm)/(qx-qm);                          %S: ratio of variances of fit and anti-fit        
     %---------------------------------       
     wm=3;  %minimum plateau length to split
-     while stop==0; %Split until ready----------------------------------
+     while stop==0 %Split until ready 
         c=c+1;
         fsel=find((f(:,2)-f(:,1)>wm)&f(:,6)~=0);        %among those plateaus sensibly long..
         [~,idx2]=max(f(fsel,6)); idx=(fsel(idx2));   %...find the best candidate to split. 
@@ -688,12 +845,11 @@ function FitX=Adapt_Fit(f,idx,FitX)
     end
 
   function FitX=Get_FitFromStepsindices(X,indexlist,initval) 
- 
       
       % This function builds plateau data
     %list of levels: [startindex  stopindex starttime stoptime level dwell stepbefore stepafter]
-        if initval.fitmean&~initval.fitmedian, modus='mean',end;
-        if ~initval.fitmean&initval.fitmedian, modus='median',end;
+        if initval.fitmean&&~initval.fitmedian, modus='mean';end;
+        if ~initval.fitmean&&initval.fitmedian, modus='median';end;
     lx=length(X);
         lsel=length(indexlist); %note: index points to last point before step
 
@@ -732,8 +888,6 @@ function FitX=Adapt_Fit(f,idx,FitX)
            LS=length(split_indices);
            new_split_log=[split_indices 3*ones(LS,1)];
            new_split_log(1:best_shot,2)=fitround;          
-           
-           dum=1;
                if fitround==1
                     full_split_log=[full_split_log ; new_split_log];
                else
@@ -742,9 +896,7 @@ function FitX=Adapt_Fit(f,idx,FitX)
                     full_split_log= [full_split_log(already_found,:);...
                                      new_split_log(new_found,:)];
                end
-           dum=1;
-               
-     
+                    
 function StepsX=AddStep_Errors(X,StepsX,initval)   
 %This function calculates step errors associated with the steps.
 % Two options: 
@@ -828,7 +980,7 @@ function [FinalSteps, FinalFit]=BuildFinalfit(T,X,splitlog,initval)
   
    
  
-function [Data,SaveName,initval]=Get_Data(initval);
+function [Data,SaveName,initval]=Get_Data(initval)
 % This function loads the data, either standard or user-choice
     disp('Loading..');
     CurrentFolder=pwd;
@@ -868,12 +1020,12 @@ function [Data,SaveName,initval]=Get_Data(initval);
      infcheck=isinf(Data);
      nancheck=isnan(Data);
 
-     if sum(infcheck)>0;
+     if sum(infcheck)>0
          msgbox('Your data contains infinite values','ERROR', 'error')
          return;
      end
 
-     if sum(nancheck)>0;
+     if sum(nancheck)>0
          msgbox('Your data contains NaN values','ERROR', 'error')
          return;
      end         
@@ -882,7 +1034,7 @@ function [Data,SaveName,initval]=Get_Data(initval);
  
   
         
- function [StepsX,levelX, histX]=Get_StepTableFromFit(T,FitX);
+ function [StepsX,levelX, histX]=Get_StepTableFromFit(T,FitX)
 %This function builds tables of steps or levels properties from a step fit
 %Values are based on Averages of plateaus
     lx=length(FitX);
@@ -923,7 +1075,7 @@ function [Data,SaveName,initval]=Get_Data(initval);
     
  
     
- function [flag,cleandata,treshold]=Outlier_flag(data,tolerance,sigchange,how,sho);
+ function [flag,cleandata,treshold]=Outlier_flag(data,tolerance,sigchange,how,sho)
 %this function is meant to find a representative value for a standard
 %deviation in a heavily skewed distribution (typically, flat data with
 % %peaks). It calculates the standard deviation and average the data;
@@ -939,12 +1091,10 @@ sigma=1E20;            %at start, use a total-upper-limit
 ratio=0;
 ld=length(data);
 flag=ones(ld,1);  %at start, all points are selected
-cleandata=data;
 while ratio<sigchange     %if not too much changes anymore; the higher this number the less outliers are peeled off.
     sigma_old=sigma;
     selc=find(flag==1);
     data(flag==1); 
-    ls=length(selc);
     av=nanmedian(data(selc));       %since we expect skewed distribution, we use the median iso the mea     
     sigma=nanstd(data(selc));
     ratio=sigma/sigma_old;
@@ -961,19 +1111,16 @@ while ratio<sigchange     %if not too much changes anymore; the higher this numb
         figure;
         bar(hx,sthst);
         title('Histogram');
-        dum=ginput(1);
         pause(0.5);  
         close(gcf);
     end
     %---------------------------- 
 end
 cleandata=data(selc); 
-hx=(min(cleandata):(range(cleandata))/binz:max(cleandata));   %make an axis
-sthst=hist(cleandata,hx);
 
 function SaveAndPlot(initval,SaveName,handles,...
         IndexAxis,Data,FinalFit,...
-        S_Curves, FinalSteps,N_found_steps_per_round);
+        S_Curves, FinalSteps,N_found_steps_per_round)
 
 %This function saves and plots data.
 stepno_final=length(FinalSteps(:,1));
@@ -982,7 +1129,7 @@ disp('Saving Files...')
 
      %% plot and save section
         initval.SaveFolder                =  [SaveName,'_Fitting_Result'];        %Make new folder to save results
-        initval.SaveFolder                 =  ['StepFit_Result'];        %Make new folder to save results
+        initval.SaveFolder                 = 'StepFit_Result';        %Make new folder to save results
         initval.SaveFolder                 =  fullfile(initval.datapath, initval.SaveFolder);
          if ~exist(initval.SaveFolder, 'dir')                                   %Check if folder already exists
          mkdir(initval.SaveFolder);                                             %If not create new folder 
@@ -1056,8 +1203,7 @@ disp('Saving Files...')
             % treshonoff: 0
             % txtoutput: 1
             % userplt: 0
-              config_table              = struct2table(orderfields(initval));
-               
+              config_table              = struct2table(orderfields(initval));              
               fits_table                = table(Time, Data, FinalFit);          %Save variables in table           
               properties_table          = table(IndexStep,TimeStep,...          %Save variables in table
                                           LevelBefore,LevelAfter,StepSize,...
@@ -1072,14 +1218,12 @@ disp('Saving Files...')
        end
        if initval.scurvesoutput == 1
                writetable(s_curve_table, [SaveName,'_s_curve.txt']);               %Save table containing S-curves     
-       end
-       
+       end       
        if initval.parametersout == 1
                writetable(config_table, [SaveName,'_config.txt']);               %Save table containing S-curves     
        end
-       
-       
-           case 'mat'
+     
+       case 'mat'
        if initval.fitsoutput == 1       
               save([SaveName,'_fits'],'Time', 'Data', 'FinalFit'); 
        end
@@ -1167,7 +1311,6 @@ disp('Saving Files...')
     SCurveRound2   = S_Curves(:,2); %S-Curve round 2
     stepno_round1=N_found_steps_per_round(1);
     stepno_round2=N_found_steps_per_round(2);
-    stepno_final;
     MK=1.1*max(S_Curves(:));
     
     figure('Name','S-Curve Evaluation','NumberTitle','off','units', 'normalized', 'position', [0.745 0.32 0.25 0.6]);
@@ -1181,7 +1324,11 @@ disp('Saving Files...')
     plot(Stepnumber,SCurveRound2,'b-', 'LineWidth',1); hold on
     plot(Stepnumber,TreshHold,'r--', 'LineWidth',1);
     plot(stepno_round1,SCurveRound1(stepno_round1),'ko','MarkerFaceColor','k','MarkerSize',6);
-    if stepno_round2>0, plotidx=stepno_round2, else plotidx=1;end
+    if stepno_round2>0
+        plotidx=stepno_round2; 
+    else
+        plotidx=1;
+    end
     plot(plotidx,SCurveRound2(plotidx),'bo','MarkerFaceColor','b','MarkerSize',6);   
     plot(stepno_final,SCurveRound1(stepno_final),'ro','MarkerSize',12);
 
@@ -1202,25 +1349,26 @@ disp('Saving Files...')
             [SaveName '_SCurve.jpg'])
             end
         end
-
-
-  
-  function User_Plot_Result(T,X,FinalFit,FinalSteps,S_Curves,initval); 
+ 
+  function User_Plot_Result(~,~,~,FinalSteps,~,initval) 
 %This function can be used to present user (and experiment-specific plots
 %using the standard stepfinder output
-          
-Stepnumber     = (1:1:length(S_Curves))'; 
-StepRange=max(Stepnumber);
+
 idx_steps= FinalSteps(:,4)> initval.basetresh; % Treshholding of steps.
-SCurveRound1   = S_Curves(:,1); %S-Curve round 1
-SCurveRound2   = S_Curves(:,2); %S-Curve round 2
-IndexStep      =  FinalSteps(idx_steps,1); %Index where step occured
-TimeStep       =  FinalSteps(idx_steps,2)*initval.resolution; %Time when step occured
+
 LevelBefore    =  FinalSteps(idx_steps,3); %Level before step
 LevelAfter     =  FinalSteps(idx_steps,4); %Level after step
 StepSize       =  LevelAfter - LevelBefore; %Size of step
-DwellTimeStep  =  FinalSteps(idx_steps,7)*initval.resolution; %Dwelltime step  
-    
+
+%not in use------------------------------
+% Stepnumber     = (1:1:length(S_Curves))';
+% StepRange=max(Stepnumber);
+% SCurveRound1   = S_Curves(:,1); %S-Curve round 1
+% SCurveRound2   = S_Curves(:,2); %S-Curve round 2
+% IndexStep      =  FinalSteps(idx_steps,1); %Index where step occured
+% TimeStep       =  FinalSteps(idx_steps,2)*initval.resolution; %Time when step occured
+% DwellTimeStep  =  FinalSteps(idx_steps,7)*initval.resolution; %Dwelltime step  
+% ---------------------------------------------   
 
 figure('Name','User plots','NumberTitle','off','units', 'normalized', 'position', [0.01 0.05 0.3 0.3]);
 % %%  Transition Density Plot
@@ -1265,156 +1413,4 @@ figure('Name','User plots','NumberTitle','off','units', 'normalized', 'position'
     ylim([0 ylimstep]);
     xlim([-1 1]);
     
-% --- Executes on button press in fitsoutput.
-function fitsoutput_Callback(hObject, eventdata, handles)
-% hObject    handle to fitsoutput (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
 
-
-% Hint: get(hObject,'Value') returns toggle state of fitsoutput
-
-
-% --- Executes on button press in propoutput.
-function propoutput_Callback(hObject, eventdata, handles)
-% hObject    handle to propoutput (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hint: get(hObject,'Value') returns toggle state of propoutput
-
-
-% --- Executes on button press in scurvesoutput.
-function scurvesoutput_Callback(hObject, eventdata, handles)
-% hObject    handle to scurvesoutput (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hint: get(hObject,'Value') returns toggle state of scurvesoutput
-
-
-% --- Executes on button press in parametersout.
-function parametersout_Callback(hObject, eventdata, handles)
-% hObject    handle to parametersout (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hint: get(hObject,'Value') returns toggle state of parametersout
-
-
-
-function manualmodesteps_Callback(hObject, eventdata, handles)
-% hObject    handle to manualmodesteps (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-manualmode=get(hObject,'String');
-checkmm=isnan(str2double(manualmode));
-if checkmm==1;
-         msgbox('The provided input for manual mode is not a number.','ERROR', 'error')
-     return;
-end
-mmnumber=str2num(manualmode);
-if mmnumber < 1;
-         msgbox('The provided input for manual mode is smaller than 1.','ERROR', 'error')
-     return;     
-end   
-
-
-% Hints: get(hObject,'String') returns contents of manualmodesteps as text
-%        str2double(get(hObject,'String')) returns contents of manualmodesteps as a double
-
-
-% --- Executes during object creation, after setting all properties.
-function manualmodesteps_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to manualmodesteps (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: edit controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
-
-
-% --- Executes on button press in manualmodebut.
-function manualmodebut_Callback(hObject, eventdata, handles)
-% hObject    handle to manualmodebut (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-set(handles.manualmodesteps,'enable','On')
-% Hint: get(hObject,'Value') returns toggle state of manualmodebut
-
-
-% --- Executes during object creation, after setting all properties.
-function fileextbox_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to fileextbox (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-
-% --- Executes during object creation, after setting all properties.
-function customoutputbox_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to customoutputbox (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% --- Executes on button press in customcontrol.
-function customcontrol_Callback(hObject, eventdata, handles)
-% hObject    handle to customcontrol (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-set(handles.parametersout,'enable','On')
-set(handles.fitsoutput,'enable','On')
-set(handles.propoutput,'enable','On')
-set(handles.scurvesoutput,'enable','On')
-% Hint: get(hObject,'Value') returns toggle state of customcontrol
-
-
-% --- Executes during object creation, after setting all properties.
-function customcontrol_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to customcontrol (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-
-% --- Executes during object creation, after setting all properties.
-function customoutoff_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to customoutoff (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-
-% --- Executes on button press in customoutoff.
-function customoutoff_Callback(hObject, eventdata, handles)
-% hObject    handle to customoutoff (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-set(handles.parametersout,'enable','Off')
-set(handles.fitsoutput,'enable','Off')
-set(handles.propoutput,'enable','Off')
-set(handles.scurvesoutput,'enable','Off')
-% Hint: get(hObject,'Value') returns toggle state of customoutoff
-
-    
-
-
-% --- Executes on button press in manualon.
-function manualon_Callback(hObject, eventdata, handles)
-% hObject    handle to manualon (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-set(handles.manualmodesteps,'enable','On')
-set(handles.manualoff,'value',0)
-% Hint: get(hObject,'Value') returns toggle state of manualon
-
-
-% --- Executes on button press in manualoff.
-function manualoff_Callback(hObject, eventdata, handles)
-% hObject    handle to manualoff (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-set(handles.manualmodesteps,'enable','Off')
-set(handles.manualon,'value',0)
-set(handles.manualmodesteps,'string',1);
-% Hint: get(hObject,'Value') returns toggle state of manualoff
