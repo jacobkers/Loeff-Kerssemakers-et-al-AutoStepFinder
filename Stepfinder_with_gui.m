@@ -129,32 +129,27 @@ function AutoStepFinder(handles)
     stepnumber_firstrun=min([ceil(LD/4) initval.fitrange]);        
     Residu=Data;  Fit=0*Data;
     S_Curves=zeros(stepnumber_firstrun+1,2); 
-
     N_found_steps_per_round=zeros(2,1); 
-    roundlist=[];
+    full_split_log=[];
     for fitround=1:2
         initval.stepnumber=stepnumber_firstrun;                         
         [FitResidu,~,S_Curve,split_indices,best_shot]=StepfinderCore(Residu,initval);       
         steproundaccept=(max(S_Curve)>initval.SMaxTreshold);
         if steproundaccept
-           N_found_steps_per_round(fitround)=best_shot;
-           [Steps, ~, ~]=Get_StepTableFromFit(IndexAxis,FitResidu);
-           roundlist=[roundlist ; fitround*ones(best_shot,1)];;
-            if fitround==1
-                split_log=split_indices; 
-            end
+           N_found_steps_per_round(fitround)=best_shot;         
+           full_split_log=expand_split_log(full_split_log,split_indices,fitround,best_shot);           
          end   
         S_Curves(:,fitround)=S_Curve;
         Residu=Residu-FitResidu;  %new residu  
         Fit=Fit+FitResidu ;       %new fit
-    end 
-    N_found_steps=sum(N_found_steps_per_round);
-    full_split_log=[split_log [roundlist; 3*ones(length(split_log)-N_found_steps,1)]];    
-    if N_found_steps==0, disp('No steps found'); else  %Final analysis: 
-    [FinalSteps, FinalFit]=BuildFinalfitViaStepErrors(IndexAxis,Data,full_split_log,N_found_steps,initval);                 
+    end    
+    
+    %Final analysis: 
+    if max(N_found_steps_per_round)==0, disp('No steps found'); else          
+    [FinalSteps, FinalFit]=BuildFinalfit(IndexAxis,Data,full_split_log,initval);                 
      SaveAndPlot(   initval,SaveName,handles,...
                             IndexAxis, Data, FinalFit,...
-                            S_Curves, FinalSteps);     
+                            S_Curves, FinalSteps,N_found_steps_per_round);     
      end        
      disp('done!');
      toc
@@ -544,7 +539,7 @@ end
     best_shot=round(min([(s_peakidx-1) ceil(length(X)/4)])); 
     indexlist=sort(splitlog(1:best_shot)); 
     
-    FitX=Get_FitFromStepsindices(X,indexlist,'mean');   
+    FitX=Get_FitFromStepsindices(X,indexlist,initval);   
     stepsX=Get_Steps(FitX); 
 
 if nargin<2
@@ -573,8 +568,12 @@ function stepsX=Get_Steps(FitX)
     difX=FitX(2:lx)-FitX(1:lx-1);
     sel=find(difX~=0);    
     lsel=length(sel);
-    dwellX=T(sel(2:lsel))-T(sel(1:lsel-1)); dwellX=[dwellX' T(lx)-T(sel(lsel))]';
-    stepsX=[sel T(sel) FitX(sel) FitX(sel+1) difX(sel) dwellX]; 
+    if lsel>0
+        dwellX=T(sel(2:lsel))-T(sel(1:lsel-1)); dwellX=[dwellX' T(lx)-T(sel(lsel))]';
+        stepsX=[sel T(sel) FitX(sel) FitX(sel+1) difX(sel) dwellX];
+    else
+        stepsX=[NaN NaN NaN NaN NaN NaN];
+    end
             
 function [FitX,f,S,splitlog]=Split_until_ready(X,initval)
      c=1; stop=0;
@@ -688,10 +687,14 @@ function FitX=Adapt_Fit(f,idx,FitX)
         end
     end
 
-  function FitX=Get_FitFromStepsindices(X,indexlist,modus) 
-  % This function builds plateau data
+  function FitX=Get_FitFromStepsindices(X,indexlist,initval) 
+ 
+      
+      % This function builds plateau data
     %list of levels: [startindex  stopindex starttime stoptime level dwell stepbefore stepafter]
-        lx=length(X);
+        if initval.fitmean&~initval.fitmedian, modus='mean',end;
+        if ~initval.fitmean&initval.fitmedian, modus='median',end;
+    lx=length(X);
         lsel=length(indexlist); %note: index points to last point before step
 
         %Build a 'FitX' based on the median levels (ot on the averages)
@@ -704,15 +707,43 @@ function FitX=Adapt_Fit(f,idx,FitX)
                 case 'mean', FitX(ixlo:ixhi)=nanmean(X(ixlo:ixhi));
                 case 'median', FitX(ixlo:ixhi)=nanmedian(X(ixlo:ixhi));
             end
-        end    
+        end
         
-
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        %% This section contains code related to the multipass steps
  
-    
- 
-    
-%This section contains code related to the multipass steps  
-    
+      function full_split_log=expand_split_log(full_split_log,split_indices,fitround,best_shot)
+           %expand split log; remove double entries (when a residu of a
+           %step is found again, we label the location by its first
+           %round occurence)
+           LS=length(split_indices);
+           new_split_log=[split_indices 3*ones(LS,1)];
+           new_split_log(1:best_shot,2)=fitround;          
+           
+           dum=1;
+               if fitround==1
+                    full_split_log=[full_split_log ; new_split_log];
+               else
+                    already_found=find(full_split_log(:,2)<3);  %steps already spotted
+                    new_found=find(~ismember(new_split_log(:,1),full_split_log(already_found,1)));                  
+                    full_split_log= [full_split_log(already_found,:);...
+                                     new_split_log(new_found,:)];
+               end
+           dum=1;
+               
      
 function StepsX=AddStep_Errors(X,StepsX,initval)   
 %This function calculates step errors associated with the steps.
@@ -748,11 +779,10 @@ for i=1:ls
 end
 
 
-function [FinalSteps, FinalFit]=BuildFinalfitViaStepErrors(T,X,splitlog,best_shot,initval)
+function [FinalSteps, FinalFit]=BuildFinalfit(T,X,splitlog,initval)
 %build a step fit based on all retained indices. Perform step-by-step error
-%analysis to accept second-round (residual) steps or not (first-round steps are always
-%accepted at this stage)
-
+%analysis to accept second-round (residual) steps or not 
+    best_shot=length(find(splitlog(:,2)<3)); %all non-duplicates
     if (initval.manualoff==1 && initval.manualon==0)
         steps_to_pick=round(initval.overshoot*best_shot);
     end
@@ -765,13 +795,12 @@ function [FinalSteps, FinalFit]=BuildFinalfitViaStepErrors(T,X,splitlog,best_sho
     candidateround_no=bestlist(ix,2);
 
     %2)Rebuild fit from all indices.
-    candidate_fit=Get_FitFromStepsindices(X,candidate_loc,'mean'); 
+    candidate_fit=Get_FitFromStepsindices(X,candidate_loc,initval); 
     candidate_steps=Get_StepTableFromFit(T,candidate_fit); 
     %3 get errors
     candidate_steps=AddStep_Errors(X,candidate_steps,initval); 
     candidate_relsteperror=(candidate_steps(:,8)./abs(candidate_steps(:,5))); 
-      
-    
+ 
     
     if (initval.localstepmerge && ~initval.setsteps)
         % Default: Keep round 1-steps AND 'good' round 2 steps:
@@ -785,7 +814,7 @@ function [FinalSteps, FinalFit]=BuildFinalfitViaStepErrors(T,X,splitlog,best_sho
     end
     %Re-build the fit from the selected indices (Effectively, rejected
     %indices are 'merged' in this step)
-    FinalFit=Get_FitFromStepsindices(X,final_idxes,'mean');
+    FinalFit=Get_FitFromStepsindices(X,final_idxes,initval);
     FinalSteps=Get_StepTableFromFit(T,FinalFit); 
     FinalSteps=AddStep_Errors(X,FinalSteps,initval);
     LF=length(FinalSteps(:,1));
@@ -795,7 +824,8 @@ function [FinalSteps, FinalFit]=BuildFinalfitViaStepErrors(T,X,splitlog,best_sho
         sel=find(candidate_steps(:,1)==idxC);
         FinalRoundNo(ii)=candidateround_no(sel(1));
     end        
-    FinalSteps(:,9)=FinalRoundNo;   
+    FinalSteps(:,9)=FinalRoundNo;  
+  
    
  
 function [Data,SaveName,initval]=Get_Data(initval);
@@ -876,8 +906,7 @@ function [Data,SaveName,initval]=Get_Data(initval);
     LevStepBefore=[0; difX(sel)];
     LevStepAfter=[difX(sel); 0];
     levelX=[Levstartidx Levstopidx LevstartT LevstopT LevLevel LevDwell LevStepBefore LevStepAfter];
-    %list of levels: [startindex starttime stopindex stoptime level dwell stepbefore stepafter]
-    
+    %list of levels: [startindex starttime stopindex stoptime level dwell stepbefore stepafter]   
     
     %histogram
     stepsizes=StepsX(:,4)-StepsX(:,3);
@@ -892,56 +921,7 @@ function [Data,SaveName,initval]=Get_Data(initval);
     end
     
     
- function [MedFitX, MedStepsX, MedLevelX, MedHistX]=Get_StepsFromFit_MedianLevel(T,X,FitX) 
-%This function calculates plateau medians  based on step locations;  
-%Steps: list of stepsizes: [index time levelbefore levelafter step dwelltime before dwelltimeafter]
-%Levels: [startindex  stopindex starttime stoptime level dwell stepbefore stepafter]
-    
-    lx=length(FitX);
-    difX=FitX(2:lx)-FitX(1:lx-1);
-    sel=find(difX~=0);  %note: index points to last point before step
-    lsel=length(sel);
  
-    %Build a 'FitX' based on the median levels (ot on the averages)
-    idxes=[0 ; sel ; lx];
-    MedFitX=0*X;
-    for ii=1:lsel+1
-        ixlo=floor(idxes(ii)+1);  %first index of plateau
-        ixhi=floor(idxes(ii+1));  %last index
-        MedFitX(ixlo:ixhi)=nanmedian(X(ixlo:ixhi));
-    end
-       
-    difMedX=MedFitX(2:lx)-MedFitX(1:lx-1);
-    
-    %dwell time after
-    dwellT=T(sel(2:lsel))-T(sel(1:lsel-1)); 
-    dwellTafter=[dwellT' T(lx)-T(sel(lsel))]';
-    dwellTbefore=[T(sel(1))-T(1) dwellT']'; 
-    MedStepsX=[sel T(sel) MedFitX(sel) MedFitX(sel+1) difMedX(sel) dwellTbefore dwellTafter]; 
-    %list of stepsizes: [index time levelbefore levelafter step dwelltime before dwelltimeafter]
-    
-    Levstartidx=[1; sel+1];  %first index of level
-    Levstopidx=[sel; lx];    %last index of level
-    LevstartT=T(Levstartidx);
-    LevstopT=T(Levstopidx);
-    LevLevel=[MedFitX(sel); MedFitX(lx)];
-    LevDwell=Levstopidx-Levstartidx+1;
-    LevStepBefore=[0; difMedX(sel)];
-    LevStepAfter=[difMedX(sel); 0];
-    MedLevelX=[Levstartidx Levstopidx LevstartT LevstopT LevLevel LevDwell LevStepBefore LevStepAfter];
-    %list of levels: [startindex  stopindex starttime stoptime level dwell stepbefore stepafter]
-    
-    %histogram
-    stepsizes=MedStepsX(:,4)-MedStepsX(:,3);
-    mx=max(stepsizes); mn=min(stepsizes);
-    stp=(mx-mn)/50;
-    hx=(mn:stp:mx);
-    if ~isempty(hx)
-        MedHistX=hist(stepsizes,hx)';
-        MedHistX=[hx' MedHistX];
-    else
-        MedHistX=[1 1];
-    end
     
  function [flag,cleandata,treshold]=Outlier_flag(data,tolerance,sigchange,how,sho);
 %this function is meant to find a representative value for a standard
@@ -993,10 +973,11 @@ sthst=hist(cleandata,hx);
 
 function SaveAndPlot(initval,SaveName,handles,...
         IndexAxis,Data,FinalFit,...
-        S_Curves, FinalSteps);
+        S_Curves, FinalSteps,N_found_steps_per_round);
 
 %This function saves and plots data.
-disp('Steps found:'), display(length(FinalSteps(:,1)))     
+stepno_final=length(FinalSteps(:,1));
+disp('Steps found:'), display(stepno_final);    
 disp('Saving Files...')
 
      %% plot and save section
@@ -1078,8 +1059,7 @@ disp('Saving Files...')
       end
       cd(curpth);
 
-    %% Plotting
-    %Plotting in GUI   
+ %% Plotting in GUI  
         close(findobj('type','figure','name','S-Curve Evaluation'));        %close S-curve plots --> for batch mode
         close(findobj('type','figure','name','User plots'));                %close user plots --> for batch mode
         cla;                                                                %clear axes 
@@ -1124,7 +1104,7 @@ disp('Saving Files...')
         end
         cd(initval.codefolder);                                             %Set current directory to pwd
 
-    % Plotting user Plots
+  %% Plotting user Plots
         if initval.userplt==1
             User_Plot_Result(IndexAxis,Data,FinalFit,FinalSteps,S_Curves,initval);
             if initval.singlerun == 0                                           %Save userplot jpg if batch run is on
@@ -1134,9 +1114,43 @@ disp('Saving Files...')
             end
         end
 
-    % Plotting S-Curve Evaluation
+ %% Plotting S-Curve Evaluation
         if initval.scurve_eval==1                                          
-            SCurve_Evaluation(IndexAxis,Data,FinalFit,FinalSteps,S_Curves,initval,Residu,FitResidu,Fit); 
+                LS=length(S_Curves(:,1));
+    Stepnumber = (1:1:LS)'; 
+    SCurveRound1   = S_Curves(:,1); %S-Curve round 1
+    SCurveRound2   = S_Curves(:,2); %S-Curve round 2
+    stepno_round1=N_found_steps_per_round(1);
+    stepno_round2=N_found_steps_per_round(2);
+    stepno_final;
+    MK=1.1*max(S_Curves(:));
+    
+    figure('Name','S-Curve Evaluation','NumberTitle','off','units', 'normalized', 'position', [0.745 0.32 0.25 0.6]);
+    %S-Curve round 1
+    SCurve1Plt=subplot(1,1,1);
+    cla(SCurve1Plt);
+
+    TreshHold=repmat(initval.SMaxTreshold,1,length(Stepnumber));
+          
+    plot(Stepnumber,SCurveRound1,'k-', 'LineWidth',1); hold on
+    plot(Stepnumber,SCurveRound2,'b-', 'LineWidth',1); hold on
+    plot(Stepnumber,TreshHold,'r--', 'LineWidth',1);
+    plot(stepno_round1+1,SCurveRound1(stepno_round1+1),'ko','MarkerFaceColor','k','MarkerSize',6);
+    plot(stepno_round2+1,SCurveRound2(stepno_round2+1),'bo','MarkerFaceColor','b','MarkerSize',6);   
+    plot(stepno_final+1,SCurveRound1(stepno_final+1),'ro','MarkerSize',10);
+    
+   
+
+    xlim([0 LS]); 
+    ylim([0 MK]);
+    set(gca,'TickDir','out','TickLength',[0.003 0.0035],'box', 'off'); %Ticks outslide plotting area
+
+    title('Multi-pass S-curves');
+    legend('R1','R2','Treshold','N1','N2','Final');
+    
+    
+    xlabel('Step Number');
+    ylabel('S-Score');
             if initval.singlerun == 0                                           %Save userplot jpg if batch run is on
             cd(initval.SaveFolder);                                             %Set current directory to savefolder  
             saveas(findobj('type','figure','name','S-Curve Evaluation'),...     %Save S-curve figure as jpg
@@ -1144,84 +1158,6 @@ disp('Saving Files...')
             end
         end
 
- 
-
-      
-      
- function SCurve_Evaluation(T,X,FinalFit,FinalSteps,S_Curves,initval,Xpeel,FitXpeel, FitX); 
-    Stepnumber     = (1:1:length(S_Curves))'; 
-    StepRange=max(Stepnumber);
-    idx_steps= FinalSteps(:,4)> initval.basetresh; % Treshholding of steps.
-    Time           = T*initval.resolution; %Time Axis
-    SCurveRound1   = S_Curves(:,1); %S-Curve round 1
-    SCurveRound2   = S_Curves(:,2); %S-Curve round 2
-
-figure('Name','S-Curve Evaluation','NumberTitle','off','units', 'normalized', 'position', [0.745 0.32 0.25 0.6]);
-%S-Curve round 1
-    SCurve1Plt=subplot(3,1,1);
-    cla(SCurve1Plt);
-    SmoothFact = (initval.fitrange/1000);
-    SmoothCurve1 = smooth(SCurveRound1,SmoothFact);
-    IdxMaxiCurve1 = find(max(SCurveRound1) == SCurveRound1);
-    xMaxCurve1 = Stepnumber(IdxMaxiCurve1);
-    yMaxCurve1 = SmoothCurve1(IdxMaxiCurve1);
-    plot(Stepnumber,SmoothCurve1,'k-');
-    xlim([0 initval.fitrange]); 
-    set(gca,'TickDir','out','TickLength',[0.003 0.0035],'box', 'off'); %Ticks outslide plotting area
-    hold on;
-    scatter(xMaxCurve1,yMaxCurve1,'bo')
-    title('Round 1');
-    xlabel('Step Number');
-    ylabel('S-Score');
-    
-%S-Curve round 2    
-    SCurve2Plt=subplot(3,1,2);
-    cla(SCurve2Plt);
-    SmoothFact = (initval.fitrange/1000);
-    IdxMaxiCurve2 = find(max(SCurveRound2) == SCurveRound2);
-    SmoothCurve2 = smooth(SCurveRound2, SmoothFact);
-    xMaxCurve2 = Stepnumber(IdxMaxiCurve2);
-    yMaxCurve2 = SmoothCurve2(IdxMaxiCurve2);
-    yMinCurve2 = min(IdxMaxiCurve2);
-    plot(Stepnumber,SmoothCurve2,'k-');
-    set(gca,'TickDir','out','TickLength',[0.003 0.0035],'box', 'off'); %Ticks outslide plotting area
-    hold on;
-    scatter(xMaxCurve2,yMaxCurve2,'bo')
-    title('Round 2');
-    xlabel('Step Number');
-    ylabel('S-Score');
-    xlim([0 initval.fitrange]);
-    ylimCurve2 = yMaxCurve2;
-    ylim([yMinCurve2 ylimCurve2]);
-    hold on;
-    if initval.SMaxTreshold > (yMaxCurve2)
-        xtext=(max(initval.fitrange)/2);
-        ytext=yMaxCurve2*1.4;
-        textRound2='Accuracy was set above the maximum';
-        %textRound2=[textRound2 newline 'Second fitting round was not peformed'];
-        %text(xtext,ytext,textRound2, 'HorizontalAlignment','center', 'Color', [1,0,0]);
-    else
-    TreshHold=repmat(initval.SMaxTreshold,1,length(Stepnumber));
-    plot(Stepnumber,TreshHold,...
-    'LineWidth',1,...
-    'Color',[1,0,0]);
-    end    
-%S-Curve round 2  
-    FitPeel=subplot(3,1,3);
-    cla(FitPeel)
-    plot(Time, Xpeel,...
-    'LineWidth',1,....
-    'Color',[0,0.2,1]); 
-    hold on;
-    plot(Time, FitXpeel,...
-    'LineWidth',2,....
-    'Color',[1,0.7,0]); 
-    hold on;
-    MaxX=Time(end);
-    xlim([0 MaxX]);
-    xlabel('Time (s)','FontSize',12);
-    ylabel('Position (A.U.)','FontSize',12);
-    set(gca,'TickDir','out','TickLength',[0.003 0.0035],'box', 'off'); %Ticks outslide plotting area
 
   
   function User_Plot_Result(T,X,FinalFit,FinalSteps,S_Curves,initval); 
