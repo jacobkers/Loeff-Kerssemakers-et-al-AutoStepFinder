@@ -625,7 +625,7 @@ function [FinalSteps, FinalFit]=BuildFinalfit(T,X,splitlog,initval)
     FinalSteps(:,9)=FinalRoundNo;  
   
     
-function [Data,SaveName,initval]=Get_Data(initval)
+function [data,SaveName,initval]=Get_Data(initval)
 % This function loads the data, either standard or user-choice
     disp('Loading..');
     CurrentFolder=pwd;
@@ -660,9 +660,10 @@ function [Data,SaveName,initval]=Get_Data(initval)
     if cols>2, msgbox('Wrong data format','ERROR', 'error'), return;end
     if cols>1, data=data(:,2); end %if array,it is assumed first column is time
 
+    
 %    check for NaN + Inf values
-     infcheck=isinf(Data);
-     nancheck=isnan(Data);
+     infcheck=isinf(data);
+     nancheck=isnan(data);
 
      if sum(infcheck)>0
          msgbox('Your data contains infinite values','ERROR', 'error')
