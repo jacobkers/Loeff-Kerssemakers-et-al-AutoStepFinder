@@ -1,8 +1,14 @@
-%AutoStepfinder: A fast and automated step detection method for
-%single-molecule analysis.
+%% AutoStepfinder: A fast and automated step detection method for single-molecule analysis.
 %Luuk Loeff*, Jacob Kerssemakers*, Chirlmin Joo & Cees Dekker.
 % * Equal contribution
-%---------------------------------
+
+%% Concise de overview: for details and explanation refer to main text.
+%Lines 10-290 contain standard GUI related functions
+%Lines 290-330 contain the main loop as described in Figure S1
+%Lines 330-520 contain the 'core code' of a single-pass stepfinder
+%Lines 520-765 contain code realted to dual-pass actions
+%Lines 767-end contain code related to saving and plotting
+
   
 function varargout = AutoStepfinder(varargin)
 % AUTOSTEPFINDER MATLAB code for AutoStepfinder.fig
@@ -80,15 +86,8 @@ function AutoStepFinder(handles)
     else    
       initval.hand_load     =  2;                                       %Batch Run
       initval.datapath      = uigetdir(initval.datapath);               %Get directory for batch analysis
-    end 
-           
-%% Hidden parameters (not on the GUI) for advanced use  
-    initval.localstepmerge=1;                                           %if larger than 0, weird steps are removed from fit
-    initval.CropInputDataFactor=1;                                      %(does it work?)
-    initval.showintermediateplots=1;                                    %(does it work?)
-    initval.steperrorestimate='measured';                               % 'predicted';    %'measured'
-    initval.steprepulsion = 1;                                          %This term prevents very small steps (2 sample points) to be fitted
-
+    end    
+    
  %% Main loop 
     autostepfinder_mainloop(initval,handles);
 
@@ -290,7 +289,7 @@ function figure1_SizeChangedFcn(hObject, eventdata, handles)
 
 
  function autostepfinder_mainloop(initval,handles)
- %This is the main, multi-pass loop of the autostepfinder
+ % This is the main, multi-pass loop of the autostepfinder
  while initval.nextfile>0 
     [Data,SaveName,initval]=Get_Data(initval);
     tic
@@ -329,7 +328,7 @@ function figure1_SizeChangedFcn(hObject, eventdata, handles)
 
 
 
-%% This section (490- to ~650) contains the 'Core' function of the stepfinder; 
+%% This section contains the 'Core' function of the stepfinder; 
 %it can be cut and autorun independently (on a simple simulated curve) for demo purposes
 
 function [FitX,stepsX,S_fin,splitlog,best_shot]=StepfinderCore(X,initval)
@@ -402,7 +401,8 @@ function [FitX,f,S,splitlog]=Split_until_ready(X,initval)
     aqm=(inxt-istart+1)*avl^2+(istop-inxt)*avr^2;   %sum of squared averages anti-plateaus, startvalue
     S(c)=(qx-aqm)/(qx-qm);                          %S: ratio of variances of fit and anti-fit        
     %---------------------------------       
-    wm=3;  %minimum plateau length to split
+    minimumwindowsize=3;  %minimum plateau length to split
+    wm=minimumwindowsize;
      while stop==0 %Split until ready 
         c=c+1;
         fsel=find((f(:,2)-f(:,1)>wm)&f(:,6)~=0);        %among those plateaus sensibly long..
@@ -538,10 +538,11 @@ function FitX=Adapt_Fit(f,idx,FitX)
 function StepsX=AddStep_Errors(X,StepsX,initval)   
 %This function calculates step errors associated with the steps.
 % Two options: 
-%     1) the standard deviation of the adjacent plateaus
-%     2) the global noise level and the length of these plateaus
+%     1) 'measured' ;the standard deviation of the adjacent plateaus
+%     2) 'predicted'; using the global noise level and the length of these plateaus
+steperrorestimate='measured';                           
 
-if strcmp(initval.steperrorestimate,'predicted')
+if strcmp(steperrorestimate,'predicted')
     shft=2;
     globalnoise=nanstd((X(shft:end)-X(1:end-shft+1)))/sqrt(2);
 end
@@ -557,12 +558,12 @@ for i=1:ls
     Nbefore=i2-i1;    
     Nafter=i3-i2;
     
-    if strcmp(initval.steperrorestimate,'measured')
+    if strcmp(steperrorestimate,'measured')
         rmsbefore=std(X(i1+1:i2));
         rmsafter=std(X(i2+1:i3)) ;
         StepsX(i,col+1)=2*(rmsbefore^2/Nbefore+rmsafter^2/Nafter)^0.5; %plus minus 95%
     end
-    if strcmp(initval.steperrorestimate,'predicted')
+    if strcmp(steperrorestimate,'predicted')
         StepsX(i,col+1)=2*(globalnoise^2/Nbefore+globalnoise^2/Nafter)^0.5; %plus minus 95%
     end
     i1=i2;
@@ -573,6 +574,9 @@ function [FinalSteps, FinalFit]=BuildFinalfit(T,X,splitlog,initval)
 %build a step fit based on all retained indices. Perform step-by-step error
 %analysis to accept second-round (residual) steps or not 
     best_shot=length(find(splitlog(:,2)<3)); %all non-duplicates
+    
+    
+    
     if (initval.manualoff==1 && initval.manualon==0)
         steps_to_pick=round(initval.overshoot*best_shot);
     end
@@ -591,8 +595,12 @@ function [FinalSteps, FinalFit]=BuildFinalfit(T,X,splitlog,initval)
     candidate_steps=AddStep_Errors(X,candidate_steps,initval); 
     candidate_relsteperror=(candidate_steps(:,8)./abs(candidate_steps(:,5))); 
  
-    
-    if (initval.localstepmerge && ~initval.setsteps)
+    %4 Reject weird steps
+    %Local Stepmerge: if larger than 0, weird steps are removed from fit. the
+    %treshold of removing is based on the avarage erros of the steps found in
+    %round 1.      
+    localstepmerge=1;
+    if (localstepmerge && ~initval.setsteps)
         % Default: Keep round 1-steps AND 'good' round 2 steps:
         % Get a   measure for the error of steps in the first round. 
         % This can be used for reference of errors from second-round steps
@@ -616,8 +624,7 @@ function [FinalSteps, FinalFit]=BuildFinalfit(T,X,splitlog,initval)
     end        
     FinalSteps(:,9)=FinalRoundNo;  
   
-   
- 
+    
 function [Data,SaveName,initval]=Get_Data(initval)
 % This function loads the data, either standard or user-choice
     disp('Loading..');
@@ -652,12 +659,7 @@ function [Data,SaveName,initval]=Get_Data(initval)
     [LD,cols]=size(data);
     if cols>2, msgbox('Wrong data format','ERROR', 'error'), return;end
     if cols>1, data=data(:,2); end %if array,it is assumed first column is time
-    if initval.CropInputDataFactor<1
-        Cropit=round(LD/initval.CropInputDataFactor);    
-        Data=data(1:Cropit); 
-    else
-        Data=data; 
-    end
+
 %    check for NaN + Inf values
      infcheck=isinf(Data);
      nancheck=isnan(Data);
@@ -813,37 +815,6 @@ disp('Saving Files...')
       
       switch initval.savestring
           case 'txt' 
-            % CropInputDataFactor: 1
-            % GlobalErrorAccept: 0.1000
-            % SMaxTreshold: 0.1500
-            % basetresh: -100000
-            % fitmean: 1
-            % fitmedian: 0
-            % fitrange: 4000
-            % fitsoutput: 1
-            % initval.hand_load: 1
-            % localstepmerge: 1
-            % manualoff: 1
-            % manualon: 0
-            % matoutput: 0
-            % meanbase: 0
-            % nextfile: 0
-            % overshoot: 1
-            % parametersout: 1
-            % propoutput: 1
-            % resolution: 1
-            % savestring: 'txt'
-            % scurve_eval: 0
-            % scurvesoutput: 1
-            % setsteps: 1
-            % showintermediateplots: 1
-            % singlerun: 1
-            % steperrorestimate: 'predicted'
-            % stepnumber: 1000
-            % steprepulsion: 0.1000
-            % treshonoff: 0
-            % txtoutput: 1
-            % userplt: 0
               config_table              = struct2table(orderfields(initval));              
               fits_table                = table(Time, Data, FinalFit);          %Save variables in table           
               properties_table          = table(IndexStep,TimeStep,...          %Save variables in table
@@ -982,8 +953,8 @@ disp('Saving Files...')
     legend('Round 1','Round 2','Threshold','S_P_1^m^a^x','S_P_2^m^a^x','Final');
     
     
-    xlabel('Step Number');
-    ylabel('S-Score');
+    xlabel('Iteration Number');
+    ylabel('S-Value');
             if initval.singlerun == 0                                           %Save userplot jpg if batch run is on
             cd(initval.SaveFolder);                                             %Set current directory to savefolder  
             saveas(findobj('type','figure','name','S-Curve Evaluation'),...     %Save S-curve figure as jpg
