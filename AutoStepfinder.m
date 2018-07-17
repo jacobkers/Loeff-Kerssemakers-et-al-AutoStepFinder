@@ -387,6 +387,7 @@ function [FitX,f,S,splitlog]=Split_until_ready(X,initval)
      c=1; stop=0;
      N=length(X);    
      FitX=mean(X)*ones(N,1); 
+     C_FitX=FitX;
      S=ones(initval.stepnumber,1);
      splitlog=zeros(initval.stepnumber,1);
      %Create the first plateau------------------------------------------
@@ -399,6 +400,7 @@ function [FitX,f,S,splitlog]=Split_until_ready(X,initval)
     qx=sum(X.^2);                                   %sum of squared data
     qm=N*(mean(X))^2;                               %sum of squared averages plateaus, startvalue
     aqm=(inxt-istart+1)*avl^2+(istop-inxt)*avr^2;   %sum of squared averages anti-plateaus, startvalue
+       
     S(c)=(qx-aqm)/(qx-qm);                          %S: ratio of variances of fit and anti-fit        
     %---------------------------------       
     minimumwindowsize=3;  %minimum plateau length to split
@@ -408,11 +410,18 @@ function [FitX,f,S,splitlog]=Split_until_ready(X,initval)
         fsel=find((f(:,2)-f(:,1)>wm)&f(:,6)~=0);        %among those plateaus sensibly long..
         [~,idx2]=max(f(fsel,6)); idx=(fsel(idx2));   %...find the best candidate to split. 
         splitlog(c-1)=f(idx,3);                          %keep track of index order
-        FitX=Adapt_Fit(f,idx,FitX);                     %adapt fit-curve
-        [f,qm,aqm]=expand_f(f,qm,aqm,idx,X);            %adapt plateau-table; adapt S
+        [FitX,C_FitX]=Adapt_Fit(f,idx,FitX,C_FitX);                     %adapt fit-curve
+        [f,qm,aqm]=expand_f(f,qm,aqm,idx,X);            %adapt plateau-table; adapt S     
         S(c)=(qx-aqm)/(qx-qm);                             %Calculate new S-function               
         stop=(1.0*c>initval.stepnumber);
-    end   %-------------------------------------------------------------------
+        FitVar(c)=sum((FitX-X).^2)/N;
+        FitVar_s(c)=(qx-qm)/N;
+        CFitVar_s(c)=(qx-aqm)/N;
+     end
+        %TEST_compare_to_SIC (c,N, X, S, FitVar_s,CFitVar_s);    
+     
+     
+     %-------------------------------------------------------------------
           
 function [f,qm,aqm]=expand_f(f,qm,aqm,idx,X)
 %this function inserts two new plateau-property rows on the location of one old one
@@ -460,11 +469,15 @@ function [f,qm,aqm]=expand_f(f,qm,aqm,idx,X)
         +1/(nFMLR+nFMRL)*(nFMLR*avFMLR+nFMRL*avFMRL)^2 ...   %CTM
         +1/(nFMRR+nFRL)*(nFMRR*avFMRR+nFRL*avFRL)^2;         %CTR
 
-function FitX=Adapt_Fit(f,idx,FitX)
-	%This function creates step  and property curves adds new plateaus
+function [FitX,C_FitX]=Adapt_Fit(f,idx,FitX,C_FitX)
+	%This function creates aapts fit and counterfit
 	i1=f(idx,1); i2=f(idx,3);av1=f(idx,4);
     i3=f(idx,3)+1; i4=f(idx,2);av2=f(idx,5);
     FitX(i1:i2)=av1; FitX(i3:i4)=av2;
+    
+    C_FitX=C_FitX;
+    
+    
               
  function [idx, avl, avr,rankit]=Splitfast(Segment)              %
 %this function also adresses a one-dim array 'Segment'
