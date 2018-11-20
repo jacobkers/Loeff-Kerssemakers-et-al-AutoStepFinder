@@ -1,7 +1,7 @@
 %% AutoStepfinder: A fast and automated step detection method for single-molecule analysis.
 %Luuk Loeff*, Jacob Kerssemakers*, Chirlmin Joo & Cees Dekker.
 % * Equal contribution
-
+% Last update: November 2018
 %% Concise de overview: for details and explanation refer to main text.
 %Lines 10-290 contain standard GUI related functions
 %Lines 290-330 contain the main loop as described in Figure S1
@@ -89,8 +89,12 @@ function AutoStepFinder(handles)
     end    
     
  %% Main loop 
-    autostepfinder_mainloop(initval,handles);
-
+ try   
+ autostepfinder_mainloop(initval,handles);
+ catch
+    display('An error occured please check the format of the input file(s) and run AutoStepfinder again.')
+    return
+ end
 %% Executes just before AutoStepfinder is made visible.
 function AutoStepfinder_OpeningFcn(hObject, ~, handles, varargin)
 cla(handles.plot_fit);
@@ -292,6 +296,21 @@ function figure1_SizeChangedFcn(hObject, eventdata, handles)
  % This is the main, multi-pass loop of the autostepfinder
  while initval.nextfile>0 
     [Data,SaveName,initval]=Get_Data(initval);
+     infcheck=isinf(Data);
+     nancheck=isnan(Data);
+     [LD,cols]=size(Data);
+    if sum(infcheck)>0
+        display('ERROR: AutoStepfinder detected Inf values, please remove Inf values from data and try again')
+        return    
+    end
+    if sum(nancheck)>0
+        display('ERROR: AutoStepfinder detected NaN values, please remove Inf values from data and try again')
+        return    
+    end
+    if cols>2
+        display('ERROR: AutoStepfinder detected more than two columns, please reformat data and try again')
+        return    
+    end
     tic
     LD=length(Data);
     IndexAxis=(1:LD)';     
@@ -387,7 +406,6 @@ function [FitX,f,S,splitlog]=Split_until_ready(X,initval)
      c=1; stop=0;
      N=length(X);    
      FitX=mean(X)*ones(N,1); 
-     C_FitX=FitX;
      S=ones(initval.stepnumber,1);
      splitlog=zeros(initval.stepnumber,1);
      %Create the first plateau------------------------------------------
@@ -400,7 +418,6 @@ function [FitX,f,S,splitlog]=Split_until_ready(X,initval)
     qx=sum(X.^2);                                   %sum of squared data
     qm=N*(mean(X))^2;                               %sum of squared averages plateaus, startvalue
     aqm=(inxt-istart+1)*avl^2+(istop-inxt)*avr^2;   %sum of squared averages anti-plateaus, startvalue
-       
     S(c)=(qx-aqm)/(qx-qm);                          %S: ratio of variances of fit and anti-fit        
     %---------------------------------       
     minimumwindowsize=3;  %minimum plateau length to split
@@ -410,18 +427,11 @@ function [FitX,f,S,splitlog]=Split_until_ready(X,initval)
         fsel=find((f(:,2)-f(:,1)>wm)&f(:,6)~=0);        %among those plateaus sensibly long..
         [~,idx2]=max(f(fsel,6)); idx=(fsel(idx2));   %...find the best candidate to split. 
         splitlog(c-1)=f(idx,3);                          %keep track of index order
-        [FitX,C_FitX]=Adapt_Fit(f,idx,FitX,C_FitX);                     %adapt fit-curve
-        [f,qm,aqm]=expand_f(f,qm,aqm,idx,X);            %adapt plateau-table; adapt S     
+        FitX=Adapt_Fit(f,idx,FitX);                     %adapt fit-curve
+        [f,qm,aqm]=expand_f(f,qm,aqm,idx,X);            %adapt plateau-table; adapt S
         S(c)=(qx-aqm)/(qx-qm);                             %Calculate new S-function               
         stop=(1.0*c>initval.stepnumber);
-        FitVar(c)=sum((FitX-X).^2)/N;
-        FitVar_s(c)=(qx-qm)/N;
-        CFitVar_s(c)=(qx-aqm)/N;
-     end
-        %TEST_compare_to_SIC (c,N, X, S, FitVar_s,CFitVar_s);    
-     
-     
-     %-------------------------------------------------------------------
+    end   %-------------------------------------------------------------------
           
 function [f,qm,aqm]=expand_f(f,qm,aqm,idx,X)
 %this function inserts two new plateau-property rows on the location of one old one
@@ -469,15 +479,11 @@ function [f,qm,aqm]=expand_f(f,qm,aqm,idx,X)
         +1/(nFMLR+nFMRL)*(nFMLR*avFMLR+nFMRL*avFMRL)^2 ...   %CTM
         +1/(nFMRR+nFRL)*(nFMRR*avFMRR+nFRL*avFRL)^2;         %CTR
 
-function [FitX,C_FitX]=Adapt_Fit(f,idx,FitX,C_FitX)
-	%This function creates aapts fit and counterfit
+function FitX=Adapt_Fit(f,idx,FitX)
+	%This function creates step  and property curves adds new plateaus
 	i1=f(idx,1); i2=f(idx,3);av1=f(idx,4);
     i3=f(idx,3)+1; i4=f(idx,2);av2=f(idx,5);
     FitX(i1:i2)=av1; FitX(i3:i4)=av2;
-    
-    C_FitX=C_FitX;
-    
-    
               
  function [idx, avl, avr,rankit]=Splitfast(Segment)              %
 %this function also adresses a one-dim array 'Segment'
@@ -648,7 +654,13 @@ function [data,SaveName,initval]=Get_Data(initval)
         [FileName,PathName] = uigetfile('*.*','Select the signal file');
         cd(CurrentFolder);
         source=strcat(PathName,FileName);
+        try
         data=double(dlmread(source));
+        catch
+            errorfile=[num2str(FileName),' is not formatted properly.'];
+            msgbox(errorfile,'ERROR', 'error')
+             return
+        end
         SaveName=FileName(1:length(FileName)-4);
         initval.nextfile=0;      
         case 2
@@ -661,7 +673,13 @@ function [data,SaveName,initval]=Get_Data(initval)
             return; end;
             AllFiles=length(AllFileNames);
             FileName=AllFileNames(fileindex).name;
+            try
             data=double(dlmread(strcat(initval.datapath,'\',FileName)));
+            catch
+            errorfile=[num2str(FileName),' is not formatted properly.'];
+            msgbox(errorfile,'ERROR', 'error')
+             return
+            end
             SaveName=FileName(1:length(FileName)-4);
             if initval.nextfile==AllFiles
                 initval.nextfile=0;
@@ -670,7 +688,10 @@ function [data,SaveName,initval]=Get_Data(initval)
             end           
     end
     [LD,cols]=size(data);
-    if cols>2, msgbox('Wrong data format','ERROR', 'error'), return;end
+    if cols>2, errorfile=[num2str(FileName),' contains more than two columns.'];
+                msgbox(errorfile,'ERROR', 'error');
+                return;
+                end
     if cols>1, data=data(:,2); end %if array,it is assumed first column is time
 
     
@@ -679,12 +700,14 @@ function [data,SaveName,initval]=Get_Data(initval)
      nancheck=isnan(data);
 
      if sum(infcheck)>0
-         msgbox('Your data contains infinite values','ERROR', 'error')
+         errorfile=[num2str(FileName),' contains infinite values.'];
+         msgbox(errorfile,'ERROR', 'error')
          return;
      end
 
      if sum(nancheck)>0
-         msgbox('Your data contains NaN values','ERROR', 'error')
+         errorfile=[num2str(FileName),' contains NaN values.'];
+         msgbox(errorfile,'ERROR', 'error')
          return;
      end         
      disp('Analyzing:'), disp(SaveName);
@@ -1014,30 +1037,29 @@ figure('Name','User plots','NumberTitle','off','units', 'normalized', 'position'
 %Step-Level
     StepLPlt = subplot(2,1,1);
     cla(StepLPlt);
-    StepBinsize = 0.05;
-    XStep=0:StepBinsize:1;
-    [histcounts, ~]= hist(LevelAfter,XStep);
-    bar(XStep,histcounts)
+    StepBinsize = round(sqrt(length(LevelAfter)),0);
+    [histcounts, ~]= hist(LevelAfter,StepBinsize);
+    hist(LevelAfter,StepBinsize);
     title('Levels');
     xlabel('Step Level');
     ylabel('Counts');
-    ylimstep=max(histcounts*1.1);
-    %xlimstep=max(LevelAfter*1.1);
-    %ylim([0 ylimstep]);
-    %xlim([0 xlimstep]);
+    ylimstep=round(max(histcounts*1.1),0);
+    xlimstep=round(max(LevelAfter*1.1),0);
+    ylim([0 ylimstep]);
+    xlim([0 xlimstep]);
         
 %Step-size
     StepSPlt = subplot(2,1,2);
     cla(StepSPlt);
-    StepBinsize = 0.05;
-    XStep=-1:StepBinsize:1;
-    [histcounts, ~]= hist(StepSize,XStep);
-    bar(XStep,histcounts)
-    title('Step-size');
+    StepBinsize = round(sqrt(length(StepSize)),0);
+    [histcounts, ~]= hist(StepSize,StepBinsize);
+    hist(StepSize,StepBinsize);
+    title('Step size');
     xlabel('Step Size');
     ylabel('Counts');
-    %ylimstep=max(histcounts*1.1);
-    %xlimstep=max(StepSize*1.1);
-    %ylim([0 ylimstep]);
-    %xlim([-1 xlimstep]);
+    ylimstep=round(max(histcounts*1.1));
+    xlimstep=round(max(StepSize*1.1));
+    xminstep=round(min(StepSize*0.9));
+    ylim([0 ylimstep]);
+    xlim([xminstep xlimstep]);
     
