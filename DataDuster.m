@@ -165,7 +165,7 @@ while initval.nextfile>0
         initval.remove=get(handles.remove,'value');           %read input for number of remove                       
         if initval.remove == 1,     initval.replacemode=4; lbl='removal';     end
         
-        outdir=strcat(PathName, 'cleaned_data_using_',lbl,'\');
+        outdir=strcat(PathName, '\cleaned_data_using_',lbl,'\');
         if ~isdir(outdir), mkdir(outdir);end
         
 
