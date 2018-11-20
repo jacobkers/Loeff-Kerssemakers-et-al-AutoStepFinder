@@ -167,9 +167,13 @@ function customoutoff_Callback(hObject, ~, handles)
 customout=get(hObject,'Value');
 if customout==0
 set(handles.parametersout,'enable','Off')
+set(handles.parametersout,'value',1)
 set(handles.fitsoutput,'enable','Off')
+set(handles.fitsoutput,'value',1)
 set(handles.propoutput,'enable','Off')
+set(handles.propoutput,'value',1)
 set(handles.scurvesoutput,'enable','Off')
+set(handles.scurvesoutput,'value',1)
 else
 set(handles.parametersout,'enable','On')
 set(handles.fitsoutput,'enable','On')
@@ -334,7 +338,13 @@ function figure1_SizeChangedFcn(hObject, eventdata, handles)
     
     %Final analysis: 
     if max(N_found_steps_per_round)==0, cla;
-       msgbox('No steps found','Operation complete', 'help'); 
+         nostepmessage=['No steps found in: ', SaveName];
+         nostepbox=msgbox(nostepmessage,'Operation complete', 'help'); 
+       if initval.hand_load == 2
+           pause(1);
+           delete(nostepbox);
+           display(char(nostepmessage));
+       end
     else          
     [FinalSteps, FinalFit]=BuildFinalfit(IndexAxis,Data,full_split_log,initval);                 
      SaveAndPlot(   initval,SaveName,handles,...
@@ -687,7 +697,7 @@ function [data,SaveName,initval]=Get_Data(initval)
                 initval.nextfile=fileindex+1;
             end           
     end
-    [LD,cols]=size(data);
+    [~,cols]=size(data);
     if cols>2, errorfile=[num2str(FileName),' contains more than two columns.'];
                 msgbox(errorfile,'ERROR', 'error');
                 return;
