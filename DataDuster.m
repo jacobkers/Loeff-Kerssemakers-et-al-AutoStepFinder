@@ -4,8 +4,13 @@
 % DataDuster algorithm: remove inf, nan and other artefacts from data
 % Last update: November 2018
 %% Concise de overview: for details and explanation refer to main text.
-
-
+%Line 13-67:    Initialization of GUI   
+%Line 68-136:	Load data
+%Line 137-152:  Check input files for errors
+%Line 153-166:  Run mode DataDuster
+%Line 167-215:  Identify indices of improperly formatted datapoint and clean up
+%Line 216-357:  GUI 
+%% Initialization of GUI  
 function varargout = DataDuster(varargin)
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -27,7 +32,7 @@ end
 % End initialization code - DO NOT EDIT
 
 % --- Executes just before DataDuster is made visible.
-function DataDuster_OpeningFcn(hObject, eventdata, handles, varargin)
+function DataDuster_OpeningFcn(hObject, ~, handles, varargin)
 % This function has no output args, see OutputFcn.
 % hObject    handle to figure
 % eventdata  reserved - to be defined in a future version of MATLAB
@@ -48,7 +53,7 @@ handles.output = hObject;
 guidata(hObject, handles);
 
 % --- Executes during object creation, after setting all properties.
-function path_CreateFcn(hObject, eventdata, handles)
+function path_CreateFcn(hObject, ~, ~)
 
     data_directory = pwd;                           %insert your default directory here
     set(hObject,'String', num2str(data_directory));
@@ -81,31 +86,36 @@ CurrentFolder=initval.datapath;
 %2) Work single or multiple files
 while initval.nextfile>0      
         switch initval.hand_load
-            case 1      
+            case 1                                              %single file
             try
             cd(initval.datapath);
             catch
-            errorpath=['Data path is not valid.'];
+            errorpath=['Data path is not valid.'];              %Error for datapath
             msgbox(errorpath,'ERROR', 'error')
             display('Please provide an existing datapath')
             return
             end
-            [FileName,PathName] = uigetfile('*.*','Select the signal file');
+            [FileName,PathName] = uigetfile('*.*','Select the signal file'); 
             cd(CurrentFolder);
             source=strcat(PathName,FileName);
             try
             data=double(dlmread(source));
             catch
-            errorfile=[num2str(FileName),' is not formatted properly.'];
+            errorfile=[num2str(FileName),' is not formatted properly.']; %Error that occurs when data is not properly formatted
             msgbox(errorfile,'ERROR', 'error')
             display('Please provide an .txt file that is free of characters')
             return
             end
             SaveName=FileName(1:length(FileName)-4);
             initval.nextfile=0;      
-            case 2
+            case 2                                      %Batch style processing
             fileindex=initval.nextfile;
+            try
             cd(initval.datapath);
+            catch
+            return
+            end
+            PathName=initval.datapath;
             AllFileNames=dir('*.txt');
             cd(CurrentFolder);
             if isempty(AllFileNames)  
@@ -210,7 +220,7 @@ display('Your data has been cleaned')
 % --- Outputs from this function are returned to the command line.
 
 
-function varargout = DataDuster_OutputFcn(hObject, eventdata, handles)
+function varargout = DataDuster_OutputFcn(~, ~, handles)
 % varargout  cell array for returning output args (see VARARGOUT);
 % hObject    handle to figure
 % eventdata  reserved - to be defined in a future version of MATLAB
@@ -219,14 +229,14 @@ function varargout = DataDuster_OutputFcn(hObject, eventdata, handles)
 varargout{1} = handles.output;
 
 % --- Executes on button press in cleandata.
-function cleandata_Callback(hObject, eventdata, handles)
+function cleandata_Callback(~, ~, handles)
 % hObject    handle to cleandata (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 datacleaner_func(handles);
 
 % --- Executes on button press in checkbox1.
-function checkbox1_Callback(hObject, eventdata, handles)
+function checkbox1_Callback(hObject, ~, handles)
 % hObject    handle to checkbox1 (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
@@ -239,7 +249,7 @@ else
 set(handles.columns,'enable','Off');
 end
 
-function columns_Callback(hObject, eventdata, handles)
+function columns_Callback(hObject, ~, handles)
 % hObject    handle to columns (see GCBO)
 initval.columsanalysis=str2double(get(handles.columns,...               %Threshold for second round of fitting
                                  'string'));
@@ -254,7 +264,7 @@ end
 %        str2double(get(hObject,'String')) returns contents of columns as a double
 
 % --- Executes during object creation, after setting all properties.
-function columns_CreateFcn(hObject, eventdata, handles)
+function columns_CreateFcn(hObject, ~, ~)
 % hObject    handle to columns (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
@@ -267,14 +277,14 @@ end
 
 
 % --- Executes during object deletion, before destroying properties.
-function columns_DeleteFcn(hObject, eventdata, handles)
+function columns_DeleteFcn(~, ~, ~)
 % hObject    handle to columns (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
 
 
-function path_Callback(hObject, eventdata, handles)
+function path_Callback(hObject, ~, ~)
 % hObject    handle to path (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
@@ -286,7 +296,7 @@ if chckfldr ~= 7,  msgbox('The provided directory is not valid.','ERROR', 'error
      return; end;
 
 % --- Executes on button press in mean.
-function mean_Callback(hObject, eventdata, handles)
+function mean_Callback(hObject, ~, ~)
 % hObject    handle to mean (see GCBO)
 initval.mean=get(hObject,'Value');
 if initval.mean == 1
@@ -294,7 +304,7 @@ if initval.mean == 1
 end
 
 % --- Executes on button press in median.
-function median_Callback(hObject, eventdata, handles)
+function median_Callback(hObject, ~, ~)
 % hObject    handle to median (see GCBO)
 initval.median=get(hObject,'Value');
 if initval.median == 1
@@ -302,7 +312,7 @@ if initval.median == 1
 end
 
 % --- Executes on button press in neighbor.
-function neighbor_Callback(hObject, eventdata, handles)
+function neighbor_Callback(hObject, ~, ~)
 % hObject    handle to neighbor (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
@@ -312,7 +322,7 @@ if initval.neighbor == 1
 end
 
 % --- Executes on button press in remove.
-function remove_Callback(hObject, eventdata, handles)
+function remove_Callback(hObject, ~, ~)
 % hObject    handle to remove (see GCBO)
 initval.remove=get(hObject,'Value');
 if initval.remove == 1
@@ -321,14 +331,14 @@ end
 
 
 % --- Executes during object creation, after setting all properties.
-function cleandata_CreateFcn(hObject, eventdata, handles)
+function cleandata_CreateFcn(~, ~, ~)
 % hObject    handle to cleandata (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
 
 
 % --- Executes on button press in single.
-function single_Callback(hObject, eventdata, handles)
+function single_Callback(hObject, ~, ~)
 % hObject    handle to single (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
@@ -340,7 +350,7 @@ end
 
 
 % --- Executes on button press in batch.
-function batch_Callback(hObject, eventdata, handles)
+function batch_Callback(~, ~, ~)
 % hObject    handle to batch (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
