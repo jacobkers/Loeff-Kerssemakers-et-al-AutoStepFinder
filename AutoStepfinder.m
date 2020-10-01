@@ -1055,8 +1055,8 @@ figure('Name','User plots','NumberTitle','off','units', 'normalized', 'position'
     ylabel('Counts');
     ylimstep=round(max(histcounts*1.1),0);
     xlimstep=round(max(LevelAfter*1.1),0);
-    ylim([0 ylimstep]);
-    xlim([0 xlimstep]);
+    %ylim([0 ylimstep]);
+    %xlim([0 xlimstep]);
         
 %Step-size
     StepSPlt = subplot(2,1,2);
@@ -1070,6 +1070,6 @@ figure('Name','User plots','NumberTitle','off','units', 'normalized', 'position'
     ylimstep=round(max(histcounts*1.1));
     xlimstep=round(max(StepSize*1.1));
     xminstep=round(min(StepSize*0.9));
-    ylim([0 ylimstep]);
-    xlim([xminstep xlimstep]);
+    %ylim([0 ylimstep]);
+    %xlim([xminstep xlimstep]);
     
