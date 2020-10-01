@@ -20,7 +20,7 @@ function StepMaker
 %% Case examples
 %--------------------------------------------------------------------------
 
-%% 1) flat distribution: set
+%% 1) flat distribution:
 %     TypeOfSteps='FlatDistribution'; 
 %     NumberOfSteps=10;
 %     spike_density=0; 
@@ -84,16 +84,17 @@ function StepMaker
     TypeOfSteps='DiscreteSteps';  
     %choices are: 'DiscreteSteps' ,  'FlatDistribution', 'Gaussian'
     
-    NumberOfSteps=20;
+    NumberOfDwells=20;
+    %Note: this is actually the number of plateaus; steps is one lower
     
-    spike_density=0.8;  
+    spike_density=0;  
     %in average events per dwell time; set to 0 to inactivate
     
-    add_start_or_stop_level=1000;  
+    add_start_or_stop_level=100;  
     %number of time points to add to front or back of curve;
     %negative: to front. %positive: to end
          
-    StepDwellRelation='InDependent'; 
+    StepDwellRelation='Dependent'; 
     %choices are:  'Dependent'; 'InDependent'
     %if Dependent, dwell times are a function of stepsize (as specified in
     %the function 'get_distributions'. If Independent, dwelltimes are 
@@ -103,12 +104,12 @@ function StepMaker
     %choices are: 'Exponential' 'Flat'
     %only applied when using 'Independent'
     
-    SignalNoiseRatio=(5)^-1;  
+    SignalNoiseRatio=(10)^-1;  
     %ratio of noise amplitude relative to average absolute step size
   
     
     %% distribution generation
-    DwellTimes=zeros(NumberOfSteps,1); 
+    DwellTimes=zeros(NumberOfDwells+1,1); 
     binz=50;
     if strcmp(StepDwellRelation, 'InDependent')       
         MinDwellTime=1;
@@ -132,8 +133,8 @@ function StepMaker
     
   %% Build lists. done by picking a random sample from the step and dwell distributions
     % Build step size list  
-    StepSizes=zeros(NumberOfSteps,1);  
-    for jj=1:NumberOfSteps   
+    StepSizes=zeros(NumberOfDwells,1);  
+    for jj=1:NumberOfDwells  
             Sample=Pick_from_distribution(StepBinAxis,SumStepSizeCurve);
             StepSizes(jj)=Sample;
     end 
@@ -141,13 +142,13 @@ function StepMaker
    % Build dwell-time list   
     switch StepDwellRelation
         case 'Dependent'  %pick related dwell time
-            for jj=1:NumberOfSteps
+            for jj=1:NumberOfDwells
                 st=StepSizes(jj);
                     [~,idx]=min(abs(StepBinAxis-st));
                     DwellTimes(jj)=StepDwells(idx);
             end                  
             case 'InDependent'
-                for jj=1:NumberOfSteps
+                for jj=1:NumberOfDwells
                     Sample=Pick_from_distribution(DwellBinAxis,SumDwellCurve);
                     DwellTimes(jj)=round(Sample);
                 end
@@ -156,11 +157,11 @@ function StepMaker
     %% Build curve     
     Curve=[];
     Level=0;
-    for jj=1:NumberOfSteps
+    for jj=1:NumberOfDwells
         Dwell=DwellTimes(jj);
         Step=StepSizes(jj);        
         NewSection=Level+Step*ones(Dwell,1);        
-        NewSection=add_spikes(NewSection,Dwell,spike_density,StepSizes,jj,NumberOfSteps);
+        NewSection=add_spikes(NewSection,Dwell,spike_density,StepSizes,jj,NumberOfDwells);
         Curve=[Curve ; NewSection];
         Level=Curve(end);
     end  
@@ -212,7 +213,7 @@ function StepMaker
     
     %% save menu
     if save_it
-    SaveName=strcat('testdata_simulated',TypeOfSteps,num2str(NumberOfSteps),'.txt');
+    SaveName=strcat('testdata_simulated',TypeOfSteps,num2str(NumberOfDwells-1),'.txt');
     dlmwrite(strcat(writepath,'/',SaveName), data);
     end
     
@@ -268,9 +269,9 @@ function StepMaker
             %A limited number of stepsizes is possible; 
             %The 'counts' specify a relative occurence.
             %using only one step gives a step train
-            stepsizes=[-10];  %sizes
-            stepcount=[1];    %occurence
-            dwelltimes=[100]; %duration
+            stepsizes=[-10 10];  %sizes
+            stepcount=[1 1];    %occurence
+            dwelltimes=[50 10]; %duration
             StepSizeCurve=(0*(StepBinAxis));
             StepDwells=round(0*StepBinAxis);
             for jj=1:length(stepsizes)

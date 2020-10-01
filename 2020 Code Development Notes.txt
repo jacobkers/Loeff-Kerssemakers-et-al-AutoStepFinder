@@ -1,0 +1,10 @@
+1-10-2020 github
+
+1) Made 'StepMaker
+It allows a wide range of trace types to be generated from sampling simulated step size distributions. It saves a trace as text file for feeding into the AutoStepfinder.  Each run provides a unique curve.
+
+2) Expanded the comment section with some case studies,  these clarify how one can quickly construct simple test traces of varying nature. 
+
+3) Made 'BleachTraceMaker''; to be added to StepMaker
+
+%file format testing of current version
