@@ -1,7 +1,7 @@
 %% AutoStepfinder: A fast and automated step detection method for single-molecule analysis.
 %Luuk Loeff*, Jacob Kerssemakers*, Chirlmin Joo & Cees Dekker.
 % * Equal contribution
-% Last update: November 2018
+% Last update: October 2020
 %% Concise de overview: for details and explanation refer to main text.
 %Lines 10-290 contain standard GUI related functions
 %Lines 290-330 contain the main loop as described in Figure S1
