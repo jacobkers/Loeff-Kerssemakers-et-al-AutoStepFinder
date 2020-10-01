@@ -1,9 +1,9 @@
 # AutoStepFinder
 
-This repository contains code to analyze steps
-In addition, it contains 
--code for cleaning data from corrupted points (uch as Inf)
--code for generating test traces,
+This repository contains 
+-code to analyze steps: 'AutoStepFinder'
+-code for cleaning data from corrupted points (such as Inf): 'DataDuster'
+-code for generating test traces : 'StepMaker'
 -a manual,
 -and a zip file containing test traces
 
