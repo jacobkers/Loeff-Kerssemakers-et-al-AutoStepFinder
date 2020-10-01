@@ -6,7 +6,7 @@
 %Lines 10-290 contain standard GUI related functions
 %Lines 290-330 contain the main loop as described in Figure S1
 %Lines 330-520 contain the 'core code' of a single-pass stepfinder
-%Lines 520-765 contain code realted to dual-pass actions
+%Lines 520-765 contain code related to dual-pass actions
 %Lines 767-end contain code related to saving and plotting
 
   
