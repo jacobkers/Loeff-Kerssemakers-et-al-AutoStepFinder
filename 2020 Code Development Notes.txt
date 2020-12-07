@@ -1,3 +1,9 @@
+7-12-2020 
+cloned Autostepfinder in: 
+(see note: usedforsettingupGit_Luuk.txt)
+Both in: C:\Users\jkerssemakers\Dropbox\CD_recent\BN_CD16_LuukLoeff
+
+
 1-10-2020 github
 -line 1058, 1073: outcommented xlim, ylim in user plots as it may crash code
 	(such as trace: testdata_simulated_BleachTrace20steps);
