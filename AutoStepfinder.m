@@ -76,6 +76,7 @@ function AutoStepFinder(handles)
     initval.scurvesoutput   = get(handles.scurvesoutput,'Value');       %Save S-curves output file.
     initval.manualoff       = get(handles.manualoff,'Value');           %Manual mode off
     initval.manualon        = get(handles.manualon,'Value');            %Manual mode on
+    initval.estimatenoise   = get(handles.noiseeston, 'Value');         %Noise estimation on
     if initval.treshonoff   == 1
       initval.basetresh     = initval.meanbase;                         %Treshhold the mean of your base line
     else
@@ -1072,7 +1073,6 @@ disp('Saving Files...')
         end
         
 %noise estimation
-initval.estimatenoise=1;
 tracelimit=min([length(Time), 10000]);   %crop long traces
 max_range= initval.max_range;  %range to consider
 if max_range < 1;
