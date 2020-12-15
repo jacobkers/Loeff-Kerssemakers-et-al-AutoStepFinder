@@ -86,7 +86,7 @@ function AutoStepFinder(handles)
     if initval.singlerun    == 1
       initval.hand_load     =  1;                                       %Single Run
       initval.rerun         =  get(handles.rerun,'Value');
-      if initval.rerun      == 1;
+      if initval.rerun      == 1
          initval.hand_load =  0;
       end
     else    
@@ -157,7 +157,7 @@ guidata(hObject, handles);
 function varargout = AutoStepfinder_OutputFcn(~, ~, handles) 
 varargout{1} = handles.output;
 
-function manualmodesteps_Callback(hObject, handles, ~)
+function manualmodesteps_Callback(hObject, ~, ~)
 manualmode=get(hObject,'String');
 checkmm=isnan(str2double(manualmode));
 if checkmm==1
@@ -210,7 +210,7 @@ function data_path_Callback(hObject, ~, ~)
 chckfldr=get(hObject,'String');
 chckfldr= exist(chckfldr);
 if chckfldr ~= 7,  msgbox('The provided directory is not valid.','ERROR', 'error')
-     return; end;
+     return; end
 
 function fitrange_Callback(hObject, ~, ~)
 fitrange=get(hObject,'String');
@@ -314,11 +314,8 @@ if initval.AdvancedOff == 1
        set(handles.noisemaxdist,'String',100);
 end
 
-% --- Executes when figure1 is resized.
-function figure1_SizeChangedFcn(hObject, eventdata, handles)
-% hObject    handle to figure1 (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
+function figure1_SizeChangedFcn(~, ~, ~)
+
 
 
 
@@ -369,7 +366,7 @@ function figure1_SizeChangedFcn(hObject, eventdata, handles)
        if initval.hand_load == 2
            pause(1);
            delete(nostepbox);
-           display(char(nostepmessage));
+           disp(char(nostepmessage));
        end
     else          
     [FinalSteps, FinalFit]=BuildFinalfit(IndexAxis,Data,full_split_log,initval);                 
@@ -555,8 +552,8 @@ function FitX=Adapt_Fit(f,idx,FitX)
       
       % This function builds plateau data
     %list of levels: [startindex  stopindex starttime stoptime level dwell stepbefore stepafter]
-        if initval.fitmean&&~initval.fitmedian, modus='mean';end;
-        if ~initval.fitmean&&initval.fitmedian, modus='median';end;
+        if initval.fitmean&&~initval.fitmedian, modus='mean';end
+        if ~initval.fitmean&&initval.fitmedian, modus='median';end
     lx=length(X);
         lsel=length(indexlist); %note: index points to last point before step
 
@@ -875,7 +872,7 @@ function SaveAndPlot(initval,SaveName,handles,...
 
 %This function saves and plots data.
 stepno_final=length(FinalSteps(:,1));
-disp('Steps found:'), display(stepno_final);    
+disp('Steps found:'), disp(stepno_final);    
 disp('Saving Files...')
 
      %% plot and save section
@@ -1211,7 +1208,7 @@ end
  
 
 % --- Executes on button press in basetreshon.
-function basetreshon_Callback(hObject, eventdata, handles)
+function basetreshon_Callback(~, ~, handles)
 set(handles.basetreshoff,'Value',0);
 set(handles.basetreshon,'Value',1)
 set(handles.meanbase, 'Enable','On');
@@ -1229,9 +1226,6 @@ set(handles.basetreshoff,'Value',1)
 
 % --- Executes on button press in noiseestoff.
 function noiseestoff_Callback(~, ~, handles)
-% hObject    handle to noiseestoff (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
     set(handles.noiseeston, 'value', 0)
     set(handles.noiseestoff, 'value', 1)
     set(handles.noisemaxdist,'Enable','Off');
