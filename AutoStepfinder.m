@@ -13,7 +13,7 @@
 function varargout = AutoStepfinder(varargin)
 % AUTOSTEPFINDER MATLAB code for AutoStepfinder.fig
 % To edit the GUI see GUIDE in the command window.
-% Last Modified by GUIDE v2.5 16-May-2018 14:18:11
+% Last Modified by GUIDE v2.5 15-Dec-2020 15:30:55
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
 gui_State = struct('gui_Name',       mfilename, ...
@@ -50,8 +50,7 @@ function AutoStepFinder(handles)
     
     initval.SMaxTreshold    = str2double(get(handles.SMaxTreshold,...   %Threshold for second round of fitting
                               'string')); 
-    initval.overshoot       = str2double(get(handles.pitch,...          %Increase of decrease the number to-be-fitted steps relative to the determined optimum.
-                              'string'));       
+    initval.overshoot       = 1 ;                                        %Increase of decrease the number to-be-fitted steps relative to the determined optimum.      
     initval.fitrange        = str2double(get(handles.fitrange,...       %Number of steps to be fitted
                               'string'));       
     initval.stepnumber      = initval.fitrange;                         %Iteration range of the measurement
@@ -59,7 +58,9 @@ function AutoStepFinder(handles)
     initval.resolution      = str2double(get(handles.res_mes,...        %Resolution of measurement
                               'string'));      
     initval.meanbase        = str2double(get(handles.meanbase,...       %Mean value of the base line
-                              'string'));       
+                              'string'));
+    initval.max_range       = str2double(get(handles.noisemaxdist,...   %Max range for noise estimation
+                              'string'));
     initval.userplt         = get(handles.userplton,'Value');           %Turn user plot function on/ off
     initval.scurve_eval     = get(handles.scurveeval,'Value');          %Turn S-curve evaluation on/ off
     initval.fitmean         = get(handles.fitmean,'Value');             %Use mean for fitting
@@ -83,20 +84,23 @@ function AutoStepFinder(handles)
     initval.singlerun       = get(handles.singrun,'Value');             %Single or batch run
     if initval.singlerun    == 1
       initval.hand_load     =  1;                                       %Single Run
+      initval.rerun         =  get(handles.rerun,'Value');
+      if initval.rerun      == 1;
+         initval.hand_load =  0;
+      end
     else    
       initval.hand_load     =  2;                                       %Batch Run
       initval.datapath      = uigetdir(initval.datapath);               %Get directory for batch analysis
     end    
-    
  %% Main loop 
- try   
+ %try   
  autostepfinder_mainloop(initval,handles);
- catch
-    display('An error occured please check the format of the input file(s) and run AutoStepfinder again.')
-    return
- end
+ %catch
+    %display('An error occured please check the format of the input file(s) and run AutoStepfinder again.')
+    %return
+ %end
 %% Executes just before AutoStepfinder is made visible.
-function AutoStepfinder_OpeningFcn(hObject, ~, handles, varargin)
+function AutoStepfinder_OpeningFcn(hObject, ~, handles, ~)
 cla(handles.plot_fit);
 axis(handles.plot_fit);
 plot(0,0);
@@ -106,13 +110,14 @@ xlabel('Time (s)','FontSize',12);                                       %Do not 
 ylabel('Position (A.U.)','FontSize',12, 'rot', 90);                     %Rotate ylabel
 set(gca,'TickDir','out','TickLength',[0.003 0.0035],'box', 'off');      %Ticks outslide plotting area
 set(handles.PostPros, 'Visible','Off'); 
+set(handles.noiseest,'Visible','Off');
 set(handles.AdvancedSettings,'Visible','Off');
 set(handles.fileextbox,'Visible','Off');
 set(handles.customoutputbox,'Visible','Off');
 set(handles.AdvancedFitting,'Visible','Off');
 set(handles.Scurve_eval,'Visible','Off');
 set(handles.advancedoff,'Value',1);
-set(handles.Scurve_eval,'Visible','Off');
+set(handles.Scurve_eval,'Visible','On');
 set(handles.customoutoff,'Value',1);
 set(handles.fitmean,'Value',1);
 set(handles.txtoutput,'Value',1);
@@ -130,10 +135,16 @@ set(handles.parametersout,'enable','Off');
 set(handles.fitsoutput,'enable','Off');
 set(handles.propoutput,'enable','Off');
 set(handles.scurvesoutput,'enable','Off');
-set(handles.manualmodesteps,'string',1);
+set(handles.manualmodesteps,'string',10);
 set(handles.SMaxTreshold,'string',0.15);
 set(handles.basetreshon,'Value', 0);
 set(handles.basetreshoff,'Value', 1);
+set(handles.rerun,'enable','Off');
+set(handles.noisemaxdist,'Enable','Off');
+set(handles.noisemaxdist,'String',100);
+set(handles.noiseeston, 'value', 0)
+set(handles.noiseestoff, 'value', 1)
+set(handles.fitrange, 'string', 10000)
 % Choose default command line output for AutoStepfinder
 handles.output = hObject;
 % Update handles structure
@@ -145,16 +156,18 @@ guidata(hObject, handles);
 function varargout = AutoStepfinder_OutputFcn(~, ~, handles) 
 varargout{1} = handles.output;
 
-function manualmodesteps_Callback(hObject, ~, ~)
+function manualmodesteps_Callback(hObject, handles, ~)
 manualmode=get(hObject,'String');
 checkmm=isnan(str2double(manualmode));
 if checkmm==1
          msgbox('The input for manual mode is NaN.','ERROR', 'error')
+         set(hObject,'String', 10);
      return;
 end
 mmnumber=str2num(manualmode);
 if mmnumber < 1
-         msgbox('The input for manual mode is smaller than 1.','ERROR', 'error')
+         msgbox('The input for manual mode is smaller than 1. Value has been set to 1.','ERROR', 'error')
+         set(hObject,'String',1);
      return;     
 end   
 
@@ -184,11 +197,13 @@ end
 function manualon_Callback(~, ~, handles)
 set(handles.manualmodesteps,'enable','On')
 set(handles.manualoff,'value',0)
+set(handles.manualon,'value',1)
 
 function manualoff_Callback(~, ~, handles)
 set(handles.manualmodesteps,'enable','Off')
 set(handles.manualon,'value',0)
-set(handles.manualmodesteps,'string',1);
+set(handles.manualoff,'value',1)
+set(handles.manualmodesteps,'string',10);
 
 function data_path_Callback(hObject, ~, ~)
 chckfldr=get(hObject,'String');
@@ -201,14 +216,22 @@ fitrange=get(hObject,'String');
 checkrange=isnan(str2double(fitrange));
      if checkrange==1
          msgbox('The iteration range parameter is NaN.','ERROR', 'error')
+         set(hObject,'String',10000);
      return;
-     end    
+     end
+   checkmax_itrange=str2num(fitrange);
+if checkmax_itrange < 1
+         msgbox('The time range for noise estimation is smaller than 1. The input value has been reset to default','ERROR', 'error')
+         set(hObject,'String',10000);
+     return;     
+end 
 
 function res_mes_Callback(hObject,~, ~)
 checktimeres=get(hObject,'String');
 checktimeres=isnan(str2double(checktimeres));
      if checktimeres==1
          msgbox('The time resolution parameter is NaN.','ERROR', 'error')
+         set(hObject,'String',1);
      return;
      end
 
@@ -217,19 +240,13 @@ checksmax=get(hObject,'String');
 checksmax=isnan(str2double(checksmax));
      if checksmax==1
          msgbox('The acceptance threshold is NaN.','ERROR', 'error')
-     return;
-     end
-
-function pitch_Callback(hObject, ~, ~)
-checkpitch=get(hObject,'String');
-checkpitch=isnan(str2double(checkpitch));
-     if checkpitch==1
-         msgbox('The sensitivity parameter is NaN.','ERROR', 'error')
+         set(hObject,'String',0.15);
      return;
      end
 
 % --- Executes on button press in runprogram.
 function runprogram_Callback(~, ~, handles,~,~,~)
+
 AutoStepFinder(handles)
 
 function meanbase_Callback(hObject, ~, ~)
@@ -255,23 +272,27 @@ end
 function paneladv_SelectionChangedFcn(~, ~, handles)
 initval.AdvancedOn=get(handles.advancedon,'Value');
 if initval.AdvancedOn == 1
+       set(handles.noiseest,'Visible','On');
        set(handles.AdvancedSettings,'Visible','On');
        set(handles.AdvancedFitting,'Visible','On');
-       set(handles.Scurve_eval,'Visible','On');
        set(handles.fileextbox,'Visible','On');
        set(handles.customoutputbox,'Visible','On');
        set(handles.customoutoff,'Value',0);
        set(handles.manualoff,'value',1);
+       set(handles.PostPros, 'Visible','On'); 
+       set(handles.noiseestoff, 'value', 1)
 end
 initval.AdvancedOff=get(handles.advancedoff,'Value');
 if initval.AdvancedOff == 1
+       set(handles.noiseest,'Visible','Off');
+       set(handles.PostPros, 'Visible','Off'); 
        set(handles.AdvancedSettings,'Visible','Off');
        set(handles.AdvancedFitting,'Visible','Off');
-       set(handles.Scurve_eval,'Visible','Off');
        set(handles.fileextbox,'Visible','Off');
        set(handles.customoutputbox,'Visible','Off');
        set(handles.fitmean,'Value',1);
-       set(handles.scruveevaloff,'Value',1);
+       set(handles.despikeoff,'Value',1);
+       set(handles.despikeon,'Value',0);
        set(handles.customoutoff,'Value',1);
        set(handles.parametersout,'Value',1);
        set(handles.fitsoutput,'Value',1);
@@ -281,11 +302,15 @@ if initval.AdvancedOff == 1
        set(handles.fitsoutput,'enable','Off');
        set(handles.propoutput,'enable','Off');
        set(handles.scurvesoutput,'enable','Off');
-       set(handles.manualmodesteps,'string',1);
+       set(handles.manualmodesteps,'string',10);
        set(handles.manualmodesteps,'enable','Off');
-       set(handles.manualon,'value',0);
-       set(handles.txtoutput,'Value',1);
-       set(handles.SMaxTreshold,'string',0.15);
+       set(handles.basetreshoff,'Value',1);
+       set(handles.basetreshon,'Value',0);
+       set(handles.meanbase, 'Enable','Off');  
+       set(handles.meanbase, 'String', 0);
+       set(handles.noiseeston, 'value', 0)
+       set(handles.noisemaxdist,'Enable','Off');
+       set(handles.noisemaxdist,'String',100);
 end
 
 % --- Executes when figure1 is resized.
@@ -299,7 +324,7 @@ function figure1_SizeChangedFcn(hObject, eventdata, handles)
  function autostepfinder_mainloop(initval,handles)
  % This is the main, multi-pass loop of the autostepfinder
  while initval.nextfile>0 
-    [Data,SaveName,initval]=Get_Data(initval);
+    [Data,SaveName,initval]=Get_Data(initval, handles);
      infcheck=isinf(Data);
      nancheck=isnan(Data);
      [LD,cols]=size(Data);
@@ -652,20 +677,49 @@ function [FinalSteps, FinalFit]=BuildFinalfit(T,X,splitlog,initval)
         FinalRoundNo(ii)=candidateround_no(sel(1));
     end        
     FinalSteps(:,9)=FinalRoundNo;  
-  
     
-function [data,SaveName,initval]=Get_Data(initval)
+function [data,SaveName,initval]=Get_Data(initval, handles)
 % This function loads the data, either standard or user-choice
     disp('Loading..');
     CurrentFolder=pwd;
     switch initval.hand_load     
+        case 0     
+        filecheck = exist('config_last_run.mat');
+        if filecheck > 0
+        old = load('config_last_run.mat', 'initval');
+        initval.source=old.initval.source;
+        source   = initval.source;
+        FileName = old.initval.FileName;
+        PathName = old.initval.PathName;
+        initval.FileName=FileName;
+        initval.PathName=PathName;
+        else 
+            errorfile=['No previous run of AutoStepfinder was found, missing config_last_run.mat.'];
+            msgbox(errorfile,'ERROR', 'error')
+             return
+        end
+        try
+        data=double(dlmread(source));
+        save('config_last_run.mat','initval');
+        catch
+            errorfile=[num2str(FileName),' is not formatted properly.'];
+            msgbox(errorfile,'ERROR', 'error')
+             return
+        end
+        SaveName=FileName(1:length(FileName)-4);
+        initval.nextfile=0;   
         case 1      
         cd(initval.datapath);
         [FileName,PathName] = uigetfile('*.*','Select the signal file');
         cd(CurrentFolder);
+        initval.FileName=FileName;
+        initval.PathName=PathName;
         source=strcat(PathName,FileName);
+        initval.source=source;
         try
         data=double(dlmread(source));
+        save('config_last_run.mat','initval');
+        set(handles.rerun,'enable','On');
         catch
             errorfile=[num2str(FileName),' is not formatted properly.'];
             msgbox(errorfile,'ERROR', 'error')
@@ -684,12 +738,18 @@ function [data,SaveName,initval]=Get_Data(initval)
             AllFiles=length(AllFileNames);
             FileName=AllFileNames(fileindex).name;
             try
+            if ismac
+            data=double(dlmread(strcat(initval.datapath,'/',FileName)));
+            else
             data=double(dlmread(strcat(initval.datapath,'\',FileName)));
+            end
+            save('config_last_run.mat','initval');
+            set(handles.rerun,'enable','Off');
             catch
             errorfile=[num2str(FileName),' is not formatted properly.'];
             msgbox(errorfile,'ERROR', 'error')
              return
-            end
+           end
             SaveName=FileName(1:length(FileName)-4);
             if initval.nextfile==AllFiles
                 initval.nextfile=0;
@@ -719,13 +779,12 @@ function [data,SaveName,initval]=Get_Data(initval)
          errorfile=[num2str(FileName),' contains NaN values.'];
          msgbox(errorfile,'ERROR', 'error')
          return;
-     end         
+     end 
+     
      disp('Analyzing:'), disp(SaveName);
-   
- 
   
         
- function [StepsX,levelX, histX]=Get_StepTableFromFit(T,FitX)
+function [StepsX,levelX, histX]=Get_StepTableFromFit(T,FitX)
 %This function builds tables of steps or levels properties from a step fit
 %Values are based on Averages of plateaus
     lx=length(FitX);
@@ -819,11 +878,11 @@ disp('Steps found:'), display(stepno_final);
 disp('Saving Files...')
 
      %% plot and save section
-        initval.SaveFolder                =  [SaveName,'_Fitting_Result'];        %Make new folder to save results
-        initval.SaveFolder                 = 'StepFit_Result';        %Make new folder to save results
+        initval.SaveFolder                =  [SaveName,'_Fitting_Result'];       	%Make new folder to save results
+        initval.SaveFolder                 = 'StepFit_Result';                      %Make new folder to save results
         initval.SaveFolder                 =  fullfile(initval.datapath, initval.SaveFolder);
-         if ~exist(initval.SaveFolder, 'dir')                                   %Check if folder already exists
-         mkdir(initval.SaveFolder);                                             %If not create new folder 
+         if ~exist(initval.SaveFolder, 'dir')                                       %Check if folder already exists
+         mkdir(initval.SaveFolder);                                                 %If not create new folder 
          end    
     
     %Fits
@@ -959,9 +1018,6 @@ disp('Saving Files...')
             [initval.SaveFolder '\' SaveName '_user_plot.jpg']);
             end
         end
-        
-        
-
  %% Plotting S-Curve Evaluation
         if initval.scurve_eval==1                                          
                 LS=length(S_Curves(:,1));
@@ -982,7 +1038,15 @@ disp('Saving Files...')
     plot(Stepnumber,SCurveRound1,'k-', 'LineWidth',1); hold on
     plot(Stepnumber,SCurveRound2,'b-', 'LineWidth',1); hold on
     plot(Stepnumber,ThreshHold,'r--', 'LineWidth',1);
+        if initval.manualon ==1 % manual mode engaged
+        manualmodesteps =  initval.setsteps;
+        plot(manualmodesteps,SCurveRound1(manualmodesteps),'ro','MarkerSize',12);
+        title('Multi-pass S-curves');
+    legend('Round 1','Round 2','Threshold','Manual');
+    else
     plot(stepno_round1,SCurveRound1(stepno_round1),'ko','MarkerFaceColor','k','MarkerSize',6);
+    title('Multi-pass S-curves');
+    legend('Round 1','Round 2','Threshold','S_P_1^m^a^x','S_P_2^m^a^x','Final');
     if stepno_round2>0
         plotidx=stepno_round2; 
     else
@@ -990,15 +1054,13 @@ disp('Saving Files...')
     end
     plot(plotidx,SCurveRound2(plotidx),'bo','MarkerFaceColor','b','MarkerSize',6);   
     plot(stepno_final,SCurveRound1(stepno_final),'ro','MarkerSize',12);
-
+    title('Multi-pass S-curves');
+    legend('Round 1','Round 2','Threshold','S_P_1^m^a^x','S_P_2^m^a^x','Final');
+    end
 
     xlim([0 LS]); 
     ylim([0 MK]);
     set(gca,'TickDir','out','TickLength',[0.003 0.0035],'box', 'off'); %Ticks outslide plotting area
-
-    title('Multi-pass S-curves');
-    legend('Round 1','Round 2','Threshold','S_P_1^m^a^x','S_P_2^m^a^x','Final');
-    
     
     xlabel('Iteration Number');
     ylabel('S-Value');
@@ -1008,7 +1070,57 @@ disp('Saving Files...')
             [SaveName '_s_curve.jpg'])
             end
         end
- 
+        
+%noise estimation
+initval.estimatenoise=1;
+tracelimit=min([length(Time), 10000]);   %crop long traces
+max_range= initval.max_range;  %range to consider
+if max_range < 1;
+    max_range = 2;
+    msgbox('The time range for noise estimation is smaller than 1 and has been rescaled to a value of 2.','Warning', 'warn')
+end
+if initval.estimatenoise==1
+trace = Data;
+Cp=length(trace);
+
+%build difference maps
+map=repmat(trace',max_range,1);
+shiftmap=NaN*zeros(max_range,Cp);
+for ii=1:max_range
+    shiftmap(ii,1:Cp-ii)=trace(ii+1:end);
+end
+difmap_sq=(map-shiftmap).^2;
+
+%get differences
+crop_hi=0.01;
+noisecurve=zeros(max_range,1);
+for rg=1:max_range
+    sqdif_sort=sort(difmap_sq(rg,:));
+    sqdif_lo=sqdif_sort(1:round((1-crop_hi)*Cp));
+    noisecurve(rg)=(nanmean(sqdif_lo)).^0.5/(2^0.5);
+end
+
+noise_nn=0*noisecurve+noisecurve(1);
+
+figure('Name','Noise_Estimator','NumberTitle','off','units', 'normalized', 'position', [0.745 0.1 0.25 0.4]);
+  %[0.745 0.32 0.25 0.6]);
+    plot(noisecurve,'LineWidth',2, 'Color',[0,0.2,1]);  hold on
+    plot(noise_nn,'LineWidth',1, 'Color','k');  hold on       
+    xlabel('time difference, pts')
+    ylabel('noise, measurmeent units');
+    ylim([0 max(noisecurve)]);
+    legend('noise vs delay','nearest-neighbour noise', 'Location', 'SouthOutSide');
+    title('Click for user estimate')
+    [~,est_noise,~]=ginput(1);
+    noisecurve_est=0*noisecurve+est_noise;
+    tx=text(max_range/10,est_noise+1,num2str(est_noise,'% 3.2f'));
+    tx(1).Color = 'red';
+    tx(1).FontSize = 12;
+    plot(noisecurve_est,'LineWidth',1, 'Color','r');  hold on
+    title('Including user estimate')
+    legend('noise vs delay','nearest-neighbour noise', 'user-estimate','Location', 'SouthOutSide');
+    
+ end
   function User_Plot_Result(~,~,~,FinalSteps,~,initval) 
 %This function can be used to present user (and experiment-specific plots
 %using the standard stepfinder output
@@ -1073,3 +1185,62 @@ figure('Name','User plots','NumberTitle','off','units', 'normalized', 'position'
     %ylim([0 ylimstep]);
     %xlim([xminstep xlimstep]);
     
+
+
+% --- Executes on button press in rerun.
+function rerun_Callback(~, ~, handles)
+set(handles.rerun,'value',1);
+AutoStepFinder(handles)
+
+
+
+
+function noisemaxdist_Callback(hObject, ~, ~)
+checkmax_range=get(hObject,'String');
+checkmax_rangenan=isnan(str2double(checkmax_range));
+     if checkmax_rangenan==1
+         msgbox('The time range for noise estimation is NaN.','ERROR', 'error')
+     return;
+     end
+     checkmax_rangenum=str2num(checkmax_range);
+if checkmax_rangenum < 1
+         msgbox('The time range for noise estimation is smaller than 1. The input value has been set to 1','ERROR', 'error')
+         set(hObject,'String',1);
+     return;     
+end 
+ 
+
+% --- Executes on button press in basetreshon.
+function basetreshon_Callback(hObject, eventdata, handles)
+set(handles.basetreshoff,'Value',0);
+set(handles.basetreshon,'Value',1)
+set(handles.meanbase, 'Enable','On');
+
+
+
+% --- Executes on button press in basetreshoff.
+function basetreshoff_Callback(~, ~, handles)
+set(handles.basetreshon,'Value',0);
+set(handles.basetreshoff,'Value',1)
+    set(handles.meanbase, 'Enable','Off');   
+    MeanBase = 0;
+    set(handles.meanbase, 'String', MeanBase);
+
+
+% --- Executes on button press in noiseestoff.
+function noiseestoff_Callback(~, ~, handles)
+% hObject    handle to noiseestoff (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+    set(handles.noiseeston, 'value', 0)
+    set(handles.noiseestoff, 'value', 1)
+    set(handles.noisemaxdist,'Enable','Off');
+
+
+
+% --- Executes on button press in noiseeston.
+function noiseeston_Callback(~, ~, handles)
+set(handles.noiseestoff, 'value', 0)
+set(handles.noiseeston, 'value', 1)
+set(handles.noisemaxdist,'Enable','On');
+
