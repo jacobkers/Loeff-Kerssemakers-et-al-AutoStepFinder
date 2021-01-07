@@ -1,3 +1,10 @@
+7-1-2021
+Stepmaker: 
+ -adapted ''steptrain'' in ''Kinesin''
+ -some small adaptations to settings defs
+
+
+
 7-12-2020 
 cloned Autostepfinder in: 
 (see note: usedforsettingupGit_Luuk.txt)
