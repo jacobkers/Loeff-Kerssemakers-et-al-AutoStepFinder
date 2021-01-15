@@ -292,8 +292,6 @@ if initval.AdvancedOff == 1
        set(handles.fileextbox,'Visible','Off');
        set(handles.customoutputbox,'Visible','Off');
        set(handles.fitmean,'Value',1);
-       set(handles.despikeoff,'Value',1);
-       set(handles.despikeon,'Value',0);
        set(handles.customoutoff,'Value',1);
        set(handles.parametersout,'Value',1);
        set(handles.fitsoutput,'Value',1);
@@ -1077,7 +1075,7 @@ if max_range < 1;
     msgbox('The time range for noise estimation is smaller than 1 and has been rescaled to a value of 2.','Warning', 'warn')
 end
 if initval.estimatenoise==1
-trace = Data;
+trace = Data - FinalFit;
 Cp=length(trace);
 
 %build difference maps
@@ -1097,26 +1095,19 @@ for rg=1:max_range
     noisecurve(rg)=(nanmean(sqdif_lo)).^0.5/(2^0.5);
 end
 
-noise_nn=0*noisecurve+noisecurve(1);
-
 figure('Name','Noise_Estimator','NumberTitle','off','units', 'normalized', 'position', [0.745 0.1 0.25 0.4]);
   %[0.745 0.32 0.25 0.6]);
     plot(noisecurve,'LineWidth',2, 'Color',[0,0.2,1]);  hold on
-    plot(noise_nn,'LineWidth',1, 'Color','k');  hold on       
-    xlabel('time difference, pts')
-    ylabel('noise, measurmeent units');
-    ylim([0 max(noisecurve)]);
-    legend('noise vs delay','nearest-neighbour noise', 'Location', 'SouthOutSide');
-    title('Click for user estimate')
-    [~,est_noise,~]=ginput(1);
+    plot(1,noisecurve(1),'ro','MarkerSize',12);  hold on       
+    xlabel('Range (pts)')
+    ylabel('Noise (measurmeent units)');
+    est_noise=median(noisecurve);
     noisecurve_est=0*noisecurve+est_noise;
-    tx=text(max_range/10,est_noise+1,num2str(est_noise,'% 3.2f'));
-    tx(1).Color = 'red';
-    tx(1).FontSize = 12;
     plot(noisecurve_est,'LineWidth',1, 'Color','r');  hold on
-    title('Including user estimate')
-    legend('noise vs delay','nearest-neighbour noise', 'user-estimate','Location', 'SouthOutSide');
-    
+    mediannoise=num2str(est_noise);
+    text(5,noisecurve_est(1),mediannoise)
+    title('Noise estimate')
+    legend('Residual noise','Pairwise distance estimate', 'Median','Location', 'SouthOutSide');
  end
   function User_Plot_Result(~,~,~,FinalSteps,~,initval) 
 %This function can be used to present user (and experiment-specific plots
