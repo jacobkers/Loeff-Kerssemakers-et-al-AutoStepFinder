@@ -13,7 +13,7 @@
 function varargout = AutoStepfinder(varargin)
 % AUTOSTEPFINDER MATLAB code for AutoStepfinder.fig
 % To edit the GUI see GUIDE in the command window.
-% Last Modified by GUIDE v2.5 15-Dec-2020 15:30:55
+% Last Modified by GUIDE v2.5 18-Jan-2021 10:13:51
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
 gui_State = struct('gui_Name',       mfilename, ...
@@ -1205,7 +1205,6 @@ set(handles.basetreshon,'Value',1)
 set(handles.meanbase, 'Enable','On');
 
 
-
 % --- Executes on button press in basetreshoff.
 function basetreshoff_Callback(~, ~, handles)
 set(handles.basetreshon,'Value',0);
@@ -1222,10 +1221,21 @@ function noiseestoff_Callback(~, ~, handles)
     set(handles.noisemaxdist,'Enable','Off');
 
 
-
 % --- Executes on button press in noiseeston.
 function noiseeston_Callback(~, ~, handles)
 set(handles.noiseestoff, 'value', 0)
 set(handles.noiseeston, 'value', 1)
 set(handles.noisemaxdist,'Enable','On');
+
+
+% --- Executes on button press in batchrun.
+function batchrun_Callback(~, ~, handles)
+set(handles.singrun, 'value', 0)
+set(handles.batchrun, 'value', 1)
+
+
+% --- Executes on button press in singrun.
+function singrun_Callback(~, ~, handles)
+set(handles.singrun, 'value', 1)
+set(handles.batchrun, 'value', 0)
 
