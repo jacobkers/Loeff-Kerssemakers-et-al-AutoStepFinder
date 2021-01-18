@@ -176,6 +176,7 @@ end
 function manualmodebut_Callback(~, ~, handles)
 set(handles.manualmodesteps,'enable','On')
 
+
 % --- Executes on button press in customoutoff.
 function customoutoff_Callback(hObject, ~, handles)
 customout=get(hObject,'Value');
@@ -199,6 +200,7 @@ function manualon_Callback(~, ~, handles)
 set(handles.manualmodesteps,'enable','On')
 set(handles.manualoff,'value',0)
 set(handles.manualon,'value',1)
+msgbox('Warning: Manual mode overrides the quality assessment of AutoStepfinder and should only be used in an informed manner.','Manual mode', 'warn')
 
 function manualoff_Callback(~, ~, handles)
 set(handles.manualmodesteps,'enable','Off')
