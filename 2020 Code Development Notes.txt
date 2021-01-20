@@ -1,4 +1,6 @@
 7-12-2020 
+added aux tools
+
 cloned Autostepfinder in: 
 (see note: usedforsettingupGit_Luuk.txt)
 Both in: C:\Users\jkerssemakers\Dropbox\CD_recent\BN_CD16_LuukLoeff
