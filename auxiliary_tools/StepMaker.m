@@ -27,7 +27,7 @@ if nargin==0
      {'DownTrendGaussian'};
      {'DownStepsWithSpikes'};
      {'FlatDistribution'};
-     {'StepTrainDown'};%
+     {'Kinesin'};%
      {'BleachTrace'};
      {'Custom User'}]     
 else
@@ -127,7 +127,7 @@ for ii=1:length(all_examples)
       end   
 
         %% plot menu
-        if nargin<1
+        if 1 %nargin<1
             close all;
             figure(298);
             if ~strcmp( example_signal,'BleachTrace')
@@ -159,6 +159,7 @@ for ii=1:length(all_examples)
         %% save menu
         if save_it  
             dlmwrite(strcat(writepath,'/',SaveName), data);
+            saveas(gcf,strcat(writepath,'/',SaveName(1:end-4),'.jpg'));
         end
 end
     
@@ -240,7 +241,7 @@ end
     init.TypeOfSteps='DiscreteSteps';  
     %choices are: 'DiscreteSteps' ,  'FlatDistribution', 'Gaussian'
     
-    init.NumberOfDwells=20;
+    init.NumberOfDwells=51;
     %Note: this is actually the number of plateaus; steps is one lower
     
     init.spike_density=3;  
@@ -260,7 +261,7 @@ end
     %choices are: 'Exponential' 'Flat'
     %only applied when using 'Independent'
     
-    init.SignalNoiseRatio=(10)^-1;  
+    init.SignalNoiseRatio=(4)^-1;  
     %ratio of noise amplitude relative to average absolute step size
     
     init.SmoothWindow=0;
@@ -273,20 +274,17 @@ end
         % 1) flat distribution:
         % This creates randomly picked steps going up and down
             init.TypeOfSteps='FlatDistribution'; 
-            init.NumberOfSteps=10;
             init.spike_density=0; 
             init.add_start_or_stop_level=0; 
             init.StepDwellRelation='Dependent'; 
             init.SignalNoiseRatio=(10)^-1;  
-        case 'StepTrainDown'            
+        case 'Kinesin'            
             %2) fixed-size steps going down
             init.TypeOfSteps='DiscreteSteps'; 
-            init.NumberOfSteps=25;
             init.spike_density=0; 
             init.add_start_or_stop_level=0; 
-            init.StepDwellRelation='Dependent'; 
-            init.SignalNoiseRatio=(10)^-1;  
-            init.Specials.DiscreteSteps.stepsizes=[-10];  %sizes
+            init.StepDwellRelation='Dependent';  
+            init.Specials.DiscreteSteps.stepsizes=[8];  %sizes
             init.Specials.DiscreteSteps.stepcount=[1];    %occurence
             init.Specials.DiscreteSteps.dwelltimes=[100]; %duration
             %  This creates a fixed-size step train going down with an end tail
@@ -294,12 +292,10 @@ end
         case 'DownStepsWithSpikes'         
             % 3) fixed-size steps going down, varying duration, with spikes
             init.TypeOfSteps='DiscreteSteps'; 
-            init.NumberOfSteps=10;
             init.spike_density=0.8; 
             init.add_start_or_stop_level=1000; 
             init.StepDwellRelation='InDependent';
-            init.TypeOfDwells='Exponential';
-            init.SignalNoiseRatio=(10)^-1;  
+            init.TypeOfDwells='Exponential'; 
             init.Specials.DiscreteSteps.stepsizes=[-10];  %sizes
             init.Specials.DiscreteSteps.stepcount=[1];    %occurence
             init.Specials.DiscreteSteps.dwelltimes=[100]; %duration
@@ -308,18 +304,15 @@ end
         case 'DownTrendGaussian'           
             % gaussian distribution, trending down
             init.TypeOfSteps='Gaussian'; 
-            init.NumberOfSteps=50;
             init.spike_density=0; 
             init.add_start_or_stop_level=-1000; 
             init.StepDwellRelation='InDependent';
             init.TypeOfDwells='Exponential';
-            init.SignalNoiseRatio=(10)^-1;  
             init.Specials.forGauss.peakpos=0.4; %in units of the step axis; 0.5 means mid-range
             init.Specials.forGauss.peakwidth=0.3; %in units of the step axis; peakpos=0.3;
         case 'Custom User'           
             % gaussian distribution, trending down
             init.TypeOfSteps='DiscreteSteps' %'Gaussian';  %'DiscreteSteps'
-            init.NumberOfSteps=50;
             init.spike_density=0; 
             init.add_start_or_stop_level=1000; 
             init.StepDwellRelation='Dependent'; %'InDependent'; %'Dependent'; 
