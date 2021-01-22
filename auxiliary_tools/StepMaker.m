@@ -1,343 +1,367 @@
-function StepMaker(tracetype)
-%JWJK_B:-------------------------------------------------------------------
-%Title:Simulate Step Traces
-%Summary: %this function  creates a simple stepped trace with noise. 
-%Approach: Steps  are taken as random samples from a 
-%stepsize - and dwell time distribution. 
-%This distribution can be refined in the 'Set_type_of_signal' function
 
-%Dwell times can be set as 'dependent' on the step size or 'independent'.
-%In the latter case they are taken as random samples from a flat or
-%exponential dwell time distribution.
+function varargout = StepMaker(varargin);
+% 
 
-%By varying the settings, a wide range of traces types can be generated
+% Begin initialization code - DO NOT EDIT
+gui_Singleton = 1;
+gui_State = struct('gui_Name',       mfilename, ...
+                   'gui_Singleton',  gui_Singleton, ...
+                   'gui_OpeningFcn', @StepMaker_OpeningFcn, ...
+                   'gui_OutputFcn',  @StepMaker_OutputFcn, ...
+                   'gui_LayoutFcn',  [] , ...
+                   'gui_Callback',   []);
+if nargin && ischar(varargin{1})
+    gui_State.gui_Callback = str2func(varargin{1});
+end
 
-%Below, example settings are given for case studies
-
-%Input: none
-%Output: step trace saved as text column in root path
-
-%Jacob Kerssemakers, Cees Dekker Lab, 2018-20
-%JWJK_B:-------------------------------------------------------------------
-
-%% Case examples
-%See line 223 and below how these work
-if nargin==0
-    all_examples=[
-     {'DownTrendGaussian'};
-     {'DownStepsWithSpikes'};
-     {'FlatDistribution'};
-     {'Kinesin'};%
-     {'BleachTrace'};
-     {'Custom User'}]     
+if nargout
+    [varargout{1:nargout}] = gui_mainfcn(gui_State, varargin{:});
 else
-     all_examples=[{tracetype}];
+    gui_mainfcn(gui_State, varargin{:});
 end
-for ii=1:length(all_examples)
-    example_signal=char(all_examples{ii});
-    init=Set_type_of_signal(example_signal);
-    %:JWJK_B-------------------------------------------------------------------         
-        save_it=1;   
-        writepath=[pwd, '\test_traces'];
-        if ~isdir(writepath), mkdir(writepath);,end
-      if strcmp( example_signal,'BleachTrace')
-           [data,SaveName]=MakeBleachTrace(init);
-      else    
-           SaveName=strcat('testdata_', example_signal,...
-            init.TypeOfSteps,num2str(init.NumberOfDwells-1),...
-            'Smz_',num2str(init.SmoothWindow),'.txt');
-        %% distribution generation
-        DwellTimes=zeros(init.NumberOfDwells+1,1); 
-        binz=50;
-        if strcmp(init.StepDwellRelation, 'InDependent')       
-            MinDwellTime=1;
-            MaxDwellTime=300;
-
-            DwellBinAxis=linspace(MinDwellTime,MaxDwellTime,binz);
-            switch init.TypeOfDwells
-                case 'Flat'
-                    DwellTimeCurve=(1+0*(DwellBinAxis)); 
-                case 'Exponential'
-                    DwellTimeCurve=exp(-DwellBinAxis/(0.5*MaxDwellTime)); 
-            end
-            DwellTimeCurve=DwellTimeCurve/sum(DwellTimeCurve);  %normalized dstribution
-            SumDwellCurve=cumsum(DwellTimeCurve);
-        end
-
-        %% Choose step distributions
-        [StepSizeCurve,StepBinAxis,StepDwells]=Set_distributions(init.TypeOfSteps,binz,init); 
-        StepSizeCurve=StepSizeCurve/sum(StepSizeCurve);  %normalized dstribution
-        SumStepSizeCurve=cumsum(StepSizeCurve); 
-
-      %% Build lists. done by picking a random sample from the step and dwell distributions
-        % Build step size list  
-        StepSizes=zeros(init.NumberOfDwells,1);  
-        for jj=1:init.NumberOfDwells  
-                Sample=Pick_from_distribution(StepBinAxis,SumStepSizeCurve);
-                StepSizes(jj)=Sample;
-        end 
-
-       % Build dwell-time list   
-        switch init.StepDwellRelation
-            case 'Dependent'  %pick related dwell time
-                for jj=1:init.NumberOfDwells
-                    st=StepSizes(jj);
-                        [~,idx]=min(abs(StepBinAxis-st));
-                        DwellTimes(jj)=StepDwells(idx);
-                end                  
-                case 'InDependent'
-                    for jj=1:init.NumberOfDwells
-                        Sample=Pick_from_distribution(DwellBinAxis,SumDwellCurve);
-                        DwellTimes(jj)=round(Sample);
-                    end
-       end
-
-        %% Build curve     
-        Curve=[];
-        Level=0;
-        for jj=1:init.NumberOfDwells
-            Dwell=DwellTimes(jj);
-            Step=StepSizes(jj);        
-            NewSection=Level+Step*ones(Dwell,1);        
-            NewSection=add_spikes(NewSection,Dwell,init.spike_density,StepSizes,jj,init.NumberOfDwells);
-            Curve=[Curve ; NewSection];
-            Level=Curve(end);
-        end  
-
-        %% Add start or tail
-        if init.add_start_or_stop_level<0
-            Curve=[zeros(abs(init.add_start_or_stop_level),1)+Curve(1) ; Curve];
-        end
-        if init.add_start_or_stop_level>0
-            Curve=[Curve ; zeros(abs(init.add_start_or_stop_level),1)+Curve(end)];
-        end
-        Ld=length(Curve);
-        TimAx=(1:Ld)';
+% End initialization code - DO NOT EDIT
 
 
-        %% Add Noise
-        MeanStep=median(abs(StepSizes));
-        Noise=randn(Ld,1)*init.SignalNoiseRatio*MeanStep;
-        Trace=Curve+Noise;
-        if init.SmoothWindow>0
-            Trace=smooth(Trace,round(init.SmoothWindow));
-        end    
-        data=[TimAx Trace];
+function Stepmaker(handles)
+%GUI parameters
+initval.flatstep        =get(handles.flatstep,'Value');              %Flat distr steps
+initval.minstep         =str2double(get(handles.minstep,'String'));
+initval.maxstep         =str2double(get(handles.maxstep,'String'));
+initval.gausstep        =get(handles.gausstep,'Value');              %Gaus distr steps
+initval.meanstep        =str2double(get(handles.meanstep,'String'));
+initval.sigmastep       =str2double(get(handles.sigmastep,'String'));
+initval.expstep         =get(handles.expstep,'Value');               %Exp distr steps
+initval.decaystep       =str2double(get(handles.decaystep,'String'));
+initval.flatdwell       =get(handles.flatdwell,'Value');             %Flat dwell dwell
+initval.mindwell        =str2double(get(handles.mindwell,'String'));
+initval.gausdwell       =get(handles.gausdwell,'Value');             %Gausd distr dwell
+initval.maxdwell        =str2double(get(handles.maxdwell,'String'));
+initval.meandwell       =str2double(get(handles.meandwell,'String'));
+initval.expdwell        =get(handles.expdwell,'Value');              %Flat distr dwell
+initval.sigmadwell      =str2double(get(handles.sigmadwell,'String'));
+initval.decaydwell      =str2double(get(handles.decaydwell,'String'));
+initval.stepsnumber     =str2double(get(handles.stepsnumber,'String'));
+initval.noisesteps      =str2double(get(handles.noisesteps,'String'));
+initval.repeats         =str2double(get(handles.repeats,'String'));
+initval.addbase         =str2double(get(handles.addbase,'String'));
+initval.repeatsteps     =str2double(get(handles.traces,'String'));
 
-      end   
+Stepmakermainloop(initval,handles)
 
-        %% plot menu
-        if 1 %nargin<1
-            close all;
-            figure(298);
-            if ~strcmp( example_signal,'BleachTrace')
-                subplot(2,2,1);
-                bar(StepBinAxis,StepSizeCurve);
-                title('Step Sizes');
-                subplot(2,2,3); 
-                if strcmp(init.StepDwellRelation, 'InDependent')          
-                    bar(DwellTimeCurve,'r');
-                    title('Dwell Times-independent');
-                    xlabel('dwell time');
-                    ylabel('occurence, a.u.');
-                end
-                if strcmp(init.StepDwellRelation, 'Dependent')          
-                    bar(StepBinAxis,StepDwells,'r');
-                    title('Dwell Times-dependent');
-                    xlabel('step size');
-                    ylabel('dwell time');
-                end
-                subplot(1,2,2);
-            end
-
-                plot(data(:,1),data(:,2));
-                title('Trace')
-                legend(strcat(init.TypeOfSteps, '-Distribution'));
-                pause(1);
-        end
-
-        %% save menu
-        if save_it  
-            dlmwrite(strcat(writepath,'/',SaveName), data);
-            saveas(gcf,strcat(writepath,'/',SaveName(1:end-4),'.jpg'));
-        end
-end
     
- function Sample=Pick_from_distribution(BinAxis,SumCurve)
-            %pick from distribution
-            pickval=rand(1);  %pick a random percentile
-            sel_st=find(SumCurve>0);
-            NonZeroSumCurve=SumCurve(sel_st);
-            NonZeroBinAxis=BinAxis(sel_st);                        
-            %nearest occupied bin            
-            [~,idx]=min(abs(NonZeroSumCurve-pickval));
-            %will return first index of plateau which is correct
-            Sample=NonZeroBinAxis(idx);  
-    
-    function NewSection=add_spikes(NewSection,Dwell,spike_density,StepSizes,jj,NumberOfSteps)
-        %optional spike adding
-        if spike_density>0&(jj>1)&(jj<NumberOfSteps-1)
-            spike_duration=3; 
-            overlength=1000*Dwell;
-            no2add=round(spike_density*1000); %should be larger than 1
-            id0=sort(ceil((overlength-1)*rand(no2add,1)));  %two indices)
-            sel=find(id0<Dwell-2*spike_duration-1);
-            if ~isempty(sel)
-                spikestarts=id0(sel); spikestops=id0(sel)+spike_duration;
-                for sp=1:length(spikestarts)  %add next step-spike
-                    NewSection(spikestarts(sp):spikestops(sp))=...
-                    NewSection(spikestarts(sp):spikestops(sp))+StepSizes(jj+1);
-                end
-                dum=1;
-            end
-        end         
-            
-            
-  
-   function [StepSizeCurve,StepBinAxis,StepDwells]=Set_distributions(TypeOfSteps,binz,init)
-    %set up global range of stepsizes. If 'dependent' dwell times are used,
-    %the dwell time is a function of hte stepsize and is specified here. If
-    %dwell times are independent, this fucntional dependendence is not used
-    %and dwell times are picked from their own distribution.    
-    %1) set bin axis 
-    MinStepSize=-10;
-    MaxStepSize=10; 
-    StepBinAxis=linspace(MinStepSize,MaxStepSize,binz);
-   
-    %2) choose step types
-    switch TypeOfSteps
-       case 'FlatDistribution'
-           %each step in the specified range has an equal chance of
-           %occurring
-            StepSizeCurve=(1+0*(StepBinAxis));   
-            StepDwells=round(0*StepBinAxis+100);
-       case 'DiscreteSteps'
-            %A limited number of stepsizes is possible; 
-            %The 'counts' specify a relative occurence.
-            %using only one step gives a step train
-            stepsizes=init.Specials.DiscreteSteps.stepsizes;  %sizes
-            stepcount=init.Specials.DiscreteSteps.stepcount;    %occurence
-            dwelltimes=init.Specials.DiscreteSteps.dwelltimes; %duration
-            StepSizeCurve=(0*(StepBinAxis));
-            StepDwells=round(0*StepBinAxis);
-            for jj=1:length(stepsizes)
-                [~,idx]=min(abs(stepsizes(jj)-StepBinAxis));
-                 StepSizeCurve(idx)=stepcount(jj);
-                 StepDwells(idx)=dwelltimes(jj);
-            end
-        case 'Gaussian'
-            peakpos=init.Specials.forGauss.peakpos;  %in units of the step axis; 0.5 means mid-range
-            peakwidth=init.Specials.forGauss.peakwidth; %same
-            Rng=MaxStepSize-MinStepSize;
-            StepSizeCurve=exp(-( (StepBinAxis-(peakpos*Rng+MinStepSize))/(peakwidth*Rng)).^2);
-            StepDwells=round(0*StepBinAxis+10+100*rand(1,binz));
-    end
-    
-    
-   function init=Set_type_of_signal(example_signal)
-    %% general default step properties 
-    %...and explanation
-    %(specific settings per type of curve), to be adapted below
-    init.TypeOfSteps='DiscreteSteps';  
-    %choices are: 'DiscreteSteps' ,  'FlatDistribution', 'Gaussian'
-    
-    init.NumberOfDwells=51;
-    %Note: this is actually the number of plateaus; steps is one lower
-    
-    init.spike_density=3;  
-    %in average events per dwell time; set to 0 to inactivate
-    
-    init.add_start_or_stop_level=100;  
-    %number of time points to add to front or back of curve;
-    %negative: to front. %positive: to end
-         
-    init.StepDwellRelation='Dependent'; 
-    %choices are:  'Dependent'; 'InDependent'
-    %if Dependent, dwell times are a function of stepsize (as specified in
-    %the function 'get_distributions'. If Independent, dwelltimes are 
-    %independently treated as a distribution (defined below)
-    
-    init.TypeOfDwells='Exponential';  
-    %choices are: 'Exponential' 'Flat'
-    %only applied when using 'Independent'
-    
-    init.SignalNoiseRatio=(4)^-1;  
-    %ratio of noise amplitude relative to average absolute step size
-    
-    init.SmoothWindow=0;
-    %add some low-pass smoothing for checking effects on fit;
-    %0=no smoothing
+function Stepmakermainloop(initval,handles)
+        display("Lets make steps!!!!")
+
+
+
+% --- Executes just before StepMaker is made visible.
+function StepMaker_OpeningFcn(hObject, eventdata, handles, varargin)
+% This function has no output args, see OutputFcn.
+% hObject    handle to figure
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+% varargin   command line arguments to StepMaker (see VARARGIN)
+set(handles.flatstep,'Value',1);              %Flat distr steps
+set(handles.minstep,'String', -10);
+set(handles.maxstep,'String',10);
+set(handles.gausstep,'Value',0);              %Gaus distr steps
+set(handles.meanstep,'String', 10);
+set(handles.sigmastep,'String', 3);
+set(handles.expstep,'Value', 0);               %Exp distr steps
+set(handles.decaystep,'String',100);
+set(handles.flatdwell,'Value',1);             %Flat dwell dwell
+set(handles.mindwell,'String', -10);
+set(handles.gausdwell,'Value', 0);             %Gausd distr dwell
+set(handles.maxdwell,'String',100);
+set(handles.meandwell,'String',75);
+set(handles.expdwell,'Value',0);              %Flat distr dwell
+set(handles.sigmadwell,'String', 25);
+set(handles.decaydwell,'String', 100);
+set(handles.stepsnumber,'String', 20);
+set(handles.noisesteps,'String', 3);
+set(handles.repeats,'String', 1);
+set(handles.addbase,'String', 0);
+set(handles.traces,'String', 5);
+set(handles.maxstep, 'Enable','On');
+set(handles.minstep, 'Enable','On');
+set(handles.meanstep, 'Enable','Off');
+set(handles.sigmastep, 'Enable','Off');
+set(handles.decaystep, 'Enable','Off');
+set(handles.maxdwell, 'Enable','On');
+set(handles.mindwell, 'Enable','On');
+set(handles.meandwell, 'Enable','Off');
+set(handles.sigmadwell, 'Enable','Off');
+set(handles.decaydwell, 'Enable','Off');
+% Choose default command line output for StepMaker
+handles.output = hObject;
+% Update handles structure
+guidata(hObject, handles);
+
+
+
+
+
+% --- Outputs from this function are returned to the command line.
+function varargout = StepMaker_OutputFcn(hObject, eventdata, handles) 
+% varargout  cell array for returning output args (see VARARGOUT);
+% hObject    handle to figure
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Get default command line output from handles structure
+varargout{1} = handles.output;
+
+
+function stepsnumber_Callback(hObject, ~, ~)
+checkmax_stepsnumber=get(hObject,'String');
+checkmax_stepsnumber=isnan(str2double(checkmax_stepsnumber));
+     if checkmax_stepsnumber==1
+         msgbox('The number of steps is NaN.','ERROR', 'error')
+         set(hObject,'String',20);
+     return;
+     end
+if checkmax_stepsnumber < 1
+         msgbox('The number of steps is smaller than 1. The input value has been set to 1','ERROR', 'error')
+         set(hObject,'String',1);
+     return;     
+end 
  
-    %% if an existing example case was defined, certain settings are adapted:
-    switch example_signal
-        case 'FlatDistribution'
-        % 1) flat distribution:
-        % This creates randomly picked steps going up and down
-            init.TypeOfSteps='FlatDistribution'; 
-            init.spike_density=0; 
-            init.add_start_or_stop_level=0; 
-            init.StepDwellRelation='Dependent'; 
-            init.SignalNoiseRatio=(10)^-1;  
-        case 'Kinesin'            
-            %2) fixed-size steps going down
-            init.TypeOfSteps='DiscreteSteps'; 
-            init.spike_density=0; 
-            init.add_start_or_stop_level=0; 
-            init.StepDwellRelation='Dependent';  
-            init.Specials.DiscreteSteps.stepsizes=[8];  %sizes
-            init.Specials.DiscreteSteps.stepcount=[1];    %occurence
-            init.Specials.DiscreteSteps.dwelltimes=[100]; %duration
-            %  This creates a fixed-size step train going down with an end tail
-            %-------------------------------------------------------------------------
-        case 'DownStepsWithSpikes'         
-            % 3) fixed-size steps going down, varying duration, with spikes
-            init.TypeOfSteps='DiscreteSteps'; 
-            init.spike_density=0.8; 
-            init.add_start_or_stop_level=1000; 
-            init.StepDwellRelation='InDependent';
-            init.TypeOfDwells='Exponential'; 
-            init.Specials.DiscreteSteps.stepsizes=[-10];  %sizes
-            init.Specials.DiscreteSteps.stepcount=[1];    %occurence
-            init.Specials.DiscreteSteps.dwelltimes=[100]; %duration
-            %  This creates a step train of varying duration going down with an end
-            %  tail, with some blinking events
-        case 'DownTrendGaussian'           
-            % gaussian distribution, trending down
-            init.TypeOfSteps='Gaussian'; 
-            init.spike_density=0; 
-            init.add_start_or_stop_level=-1000; 
-            init.StepDwellRelation='InDependent';
-            init.TypeOfDwells='Exponential';
-            init.Specials.forGauss.peakpos=0.4; %in units of the step axis; 0.5 means mid-range
-            init.Specials.forGauss.peakwidth=0.3; %in units of the step axis; peakpos=0.3;
-        case 'Custom User'           
-            % gaussian distribution, trending down
-            init.TypeOfSteps='DiscreteSteps' %'Gaussian';  %'DiscreteSteps'
-            init.spike_density=0; 
-            init.add_start_or_stop_level=1000; 
-            init.StepDwellRelation='Dependent'; %'InDependent'; %'Dependent'; 
-            init.TypeOfDwells='Flat';  %'Exponential' 'Flat'
-            init.SignalNoiseRatio=(10)^-1;
-            init.SmoothWindow=0;
-            
-            init.Specials.forGauss.peakpos=0.4; %in units of the step axis; 0.5 means mid-range
-            init.Specials.forGauss.peakwidth=0.3; %in units of the step axis; peakpos=0.3;
-            init.Specials.DiscreteSteps.stepsizes= [-10 -5   5 10];  %sizes
-            init.Specials.DiscreteSteps.stepcount= [1    5  1   1 ];    %occurence
-            init.Specials.DiscreteSteps.dwelltimes=[200  50 50 200]; %duration
-        case 'BleachTrace'
-            init.pts=1000; 
-            init.tau=init.pts/10; 
-            init.N0=7; 
-            init.noise=0.3;
-    end
-    
-    function [data,SaveName]=MakeBleachTrace(init);
-            %Make a simple bleach-like trace
-            tt=linspace(1,1000, init.pts);
-            yy=round(init.N0*exp(-tt/init.tau))+init.noise*randn(1,init.pts);
-            data=[tt', yy'];
-            SaveName=strcat('testdata_simulated_BleachTrace',num2str(init.N0),'steps.txt');
-            
 
-  
+function noisesteps_Callback(hObject, ~, ~)
+checkmax_noisesteps=get(hObject,'String');
+checkmax_noisesteps=isnan(str2double(checkmax_noisesteps));
+     if checkmax_noisesteps==1
+         msgbox('The noise setting is NaN.','ERROR', 'error')
+         set(hObject,'String',3);
+     return;
+     end
+
+   
+function minstep_Callback(hObject, ~, ~)
+checkmax_minstep=get(hObject,'String');
+checkmax_minstep=isnan(str2double(checkmax_minstep));
+     if checkmax_minstep==1
+         msgbox('The Min stepsize setting is NaN.','ERROR', 'error')
+         set(hObject,'String',-10);
+     return;
+     end
+
+
+function GenerateData_Callback(hObject, ~, ~)
+% hObject    handle to GenerateData (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+Stepmaker(handles)
+
+function decaystep_Callback(hObject, ~, ~)
+checkmax_decaystep=get(hObject,'String');
+checkmax_decaystep=isnan(str2double(checkmax_decaystep));
+     if checkmax_decaystep==1
+         msgbox('The decay setting is NaN.','ERROR', 'error')
+         set(hObject,'String',100);
+     return;
+     end
+
+
+
+function mindwell_Callback(hObject, ~, ~)
+checkmax_mindwell=get(hObject,'String');
+checkmax_mindwell=isnan(str2double(checkmax_mindwell));
+     if checkmax_mindwell==1
+         msgbox('The Min dwell time setting is NaN.','ERROR', 'error')
+         set(hObject,'String',50);
+     return;
+     end
+          if checkmax_mindwell < 1
+         msgbox('The min dwell time is smaller than 1. The input value has been set to 1','ERROR', 'error')
+         set(hObject,'String',1);
+     return;     
+end 
+   
+
+
+
+function meandwell_Callback(hObject, ~, ~)
+checkmax_meandwell=get(hObject,'String');
+checkmax_meandwell=isnan(str2double(checkmax_meandwell));
+     if checkmax_meandwell==1
+         msgbox('The mean dwell time setting is NaN.','ERROR', 'error')
+         set(hObject,'String',75);
+     return;
+     end
+if checkmax_meandwell < 2
+         msgbox('The number of steps is smaller than 1. The input value has been set to 1','ERROR', 'error')
+         set(hObject,'String',2);
+     return;     
+end 
+
+
+
+function decaydwell_Callback(hObject, ~, ~)
+checkmax_decaydwell=get(hObject,'String');
+checkmax_decaydwell=isnan(str2double(checkmax_decaydwell));
+     if checkmax_decaydwell==1
+         msgbox('The decay setting is NaN.','ERROR', 'error')
+         set(hObject,'String',100);
+     return;
+     end
+
+
+
+
+function maxdwell_Callback(hObject, ~, ~)
+checkmax_maxdwell=get(hObject,'String');
+checkmax_maxdwell=isnan(str2double(checkmax_maxdwell));
+     if checkmax_maxdwell==1
+         msgbox('The max dwell time setting is NaN.','ERROR', 'error')
+         set(hObject,'String',100);
+     return;
+     end
+     if checkmax_maxdwell < 2
+         msgbox('The max dwelltime is smaller than 2. The input value has been set to 2','ERROR', 'error')
+         set(hObject,'String',2);
+     return;     
+end 
+
+
+
+
+
+function sigmadwell_Callback(hObject, ~, ~)
+checkmax_sigmadwell=get(hObject,'String');
+checkmax_sigmadwell=isnan(str2double(checkmax_sigmadwell));
+     if checkmax_sigmadwell==1
+         msgbox('The sigma dwell time setting is NaN.','ERROR', 'error')
+         set(hObject,'String',25);
+     return;
+     end
+
+
+
+function addbase_Callback(hObject, ~, ~)
+checkmax_addbase=get(hObject,'String');
+checkmax_addbase=isnan(str2double(checkmax_addbase));
+     if checkmax_addbase==1
+         msgbox('The add baseline setting is NaN.','ERROR', 'error')
+         set(hObject,'String',0);
+     return;
+     end
+
+function meanstep_Callback(hObject, ~, ~)
+checkmax_meanstep=get(hObject,'String');
+checkmax_meanstep=isnan(str2double(checkmax_meanstep));
+     if checkmax_meanstep==1
+         msgbox('The mean stepsize setting is NaN.','ERROR', 'error')
+         set(hObject,'String',10);
+     return;
+     end
+
+function sigmastep_Callback(hObject, ~, ~)
+checkmax_sigmastep=get(hObject,'String');
+checkmax_sigmastep=isnan(str2double(checkmax_sigmastep));
+     if checkmax_sigmastep==1
+         msgbox('The sigma stepsize setting is NaN.','ERROR', 'error')
+         set(hObject,'String',10);
+     return;
+     end
+
+
+
+function repeats_Callback(hObject, ~, ~)
+checkmax_repeats=get(hObject,'String');
+checkmax_repeats=isnan(str2double(checkmax_repeats));
+     if checkmax_repeats==1
+         msgbox('The number of repeats is NaN.','ERROR', 'error')
+         set(hObject,'String',1);
+     return;
+     end
+     if checkmax_repeats < 1
+         msgbox('The number of repeats is smaller than 1. The input value has been set to 1','ERROR', 'error')
+         set(hObject,'String',1);
+     return;     
+end 
+ 
+
+
+function traces_Callback(hObject, ~, ~)
+checkmax_traces=get(hObject,'String');
+checkmax_traces=isnan(str2double(checkmax_traces));
+     if checkmax_traces==1
+         msgbox('The number of traces is NaN.','ERROR', 'error')
+         set(hObject,'String',1);
+     return;
+     end
+if checkmax_traces < 1
+         msgbox('The number of traces is smaller than 1. The input value has been set to 1','ERROR', 'error')
+         set(hObject,'String',1);
+     return;     
+end 
+ 
+
+function maxstep_Callback(hObject, ~, ~)
+checkmax_maxstep=get(hObject,'String');
+checkmax_maxstep=isnan(str2double(checkmax_maxstep));
+     if checkmax_maxstep==1
+         msgbox('The max stepsize setting is NaN.','ERROR', 'error')
+         set(hObject,'String',1);
+     return;
+     end
+
+
+% --- Executes on button press in flatstep.
+function flatstep_Callback(~, ~, handles)
+% hObject    handle to flatstep (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+set(handles.maxstep, 'Enable','On');
+set(handles.minstep, 'Enable','On');
+set(handles.meanstep, 'Enable','Off');
+set(handles.sigmastep, 'Enable','Off');
+set(handles.decaystep, 'Enable','Off');
+
+
+
+% --- Executes on button press in gausstep.
+function gausstep_Callback(~, ~, handles)
+set(handles.maxstep, 'Enable','Off');
+set(handles.minstep, 'Enable','Off');
+set(handles.meanstep, 'Enable','On');
+set(handles.sigmastep, 'Enable','On');
+set(handles.decaystep, 'Enable','Off');
+
+
+
+% --- Executes on button press in expstep.
+function expstep_Callback(~, ~, handles)
+set(handles.maxstep, 'Enable','Off');
+set(handles.minstep, 'Enable','Off');
+set(handles.meanstep, 'Enable','Off');
+set(handles.sigmastep, 'Enable','Off');
+set(handles.decaystep, 'Enable','On');
+
+
+% --- Executes on button press in flatdwell.
+function flatdwell_Callback(~, ~, handles)
+set(handles.maxdwell, 'Enable','On');
+set(handles.mindwell, 'Enable','On');
+set(handles.meandwell, 'Enable','Off');
+set(handles.sigmadwell, 'Enable','Off');
+set(handles.decaydwell, 'Enable','Off');
+
+
+% --- Executes on button press in gausdwell.
+function gausdwell_Callback(~, ~, handles)
+set(handles.maxdwell, 'Enable','Off');
+set(handles.mindwell, 'Enable','Off');
+set(handles.meandwell, 'Enable','On');
+set(handles.sigmadwell, 'Enable','On');
+set(handles.decaydwell, 'Enable','Off');
+
+
+% --- Executes on button press in expdwell.
+function expdwell_Callback(~, ~, handles)
+set(handles.maxdwell, 'Enable','Off');
+set(handles.mindwell, 'Enable','Off');
+set(handles.meandwell, 'Enable','Off');
+set(handles.sigmadwell, 'Enable','Off');
+set(handles.decaydwell, 'Enable','On');
