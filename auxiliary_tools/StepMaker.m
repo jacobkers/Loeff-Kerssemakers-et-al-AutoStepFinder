@@ -22,8 +22,9 @@ end
 % End initialization code - DO NOT EDIT
 
 
-function Stepmaker(handles)
+function Stepmaker(handles)   
 %GUI parameters
+handles = guidata(StepMaker);
 initval.flatstep        =get(handles.flatstep,'Value');              %Flat distr steps
 initval.minstep         =str2double(get(handles.minstep,'String'));
 initval.maxstep         =str2double(get(handles.maxstep,'String'));
@@ -45,15 +46,12 @@ initval.noisesteps      =str2double(get(handles.noisesteps,'String'));
 initval.repeats         =str2double(get(handles.repeats,'String'));
 initval.addbase         =str2double(get(handles.addbase,'String'));
 initval.repeatsteps     =str2double(get(handles.traces,'String'));
-
-Stepmakermainloop(initval,handles)
+stepmaker_mainloop(initval)
+ 
+     function stepmaker_mainloop(initval)
+         %%insertcode here!
 
     
-function Stepmakermainloop(initval,handles)
-        display("Lets make steps!!!!")
-
-
-
 % --- Executes just before StepMaker is made visible.
 function StepMaker_OpeningFcn(hObject, eventdata, handles, varargin)
 % This function has no output args, see OutputFcn.
@@ -147,7 +145,7 @@ checkmax_minstep=isnan(str2double(checkmax_minstep));
      end
 
 
-function GenerateData_Callback(hObject, ~, ~)
+function GenerateData_Callback(~, handles, ~)
 % hObject    handle to GenerateData (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
