@@ -10,6 +10,7 @@ gui_State = struct('gui_Name',       mfilename, ...
                    'gui_OutputFcn',  @StepMaker_OutputFcn, ...
                    'gui_LayoutFcn',  [] , ...
                    'gui_Callback',   []);
+               
 if nargin && ischar(varargin{1})
     gui_State.gui_Callback = str2func(varargin{1});
 end
@@ -24,7 +25,6 @@ end
 
 function Stepmaker(handles)   
 %GUI parameters
-handles = guidata(StepMaker);
 initval.flatstep        =get(handles.flatstep,'Value');              %Flat distr steps
 initval.minstep         =str2double(get(handles.minstep,'String'));
 initval.maxstep         =str2double(get(handles.maxstep,'String'));
@@ -50,6 +50,7 @@ stepmaker_mainloop(initval)
  
      function stepmaker_mainloop(initval)
          %%insertcode here!
+         initval
 
     
 % --- Executes just before StepMaker is made visible.
@@ -59,37 +60,7 @@ function StepMaker_OpeningFcn(hObject, eventdata, handles, varargin)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 % varargin   command line arguments to StepMaker (see VARARGIN)
-set(handles.flatstep,'Value',1);              %Flat distr steps
-set(handles.minstep,'String', -10);
-set(handles.maxstep,'String',10);
-set(handles.gausstep,'Value',0);              %Gaus distr steps
-set(handles.meanstep,'String', 10);
-set(handles.sigmastep,'String', 3);
-set(handles.expstep,'Value', 0);               %Exp distr steps
-set(handles.decaystep,'String',100);
-set(handles.flatdwell,'Value',1);             %Flat dwell dwell
-set(handles.mindwell,'String', -10);
-set(handles.gausdwell,'Value', 0);             %Gausd distr dwell
-set(handles.maxdwell,'String',100);
-set(handles.meandwell,'String',75);
-set(handles.expdwell,'Value',0);              %Flat distr dwell
-set(handles.sigmadwell,'String', 25);
-set(handles.decaydwell,'String', 100);
-set(handles.stepsnumber,'String', 20);
-set(handles.noisesteps,'String', 3);
-set(handles.repeats,'String', 1);
-set(handles.addbase,'String', 0);
-set(handles.traces,'String', 5);
-set(handles.maxstep, 'Enable','On');
-set(handles.minstep, 'Enable','On');
-set(handles.meanstep, 'Enable','Off');
-set(handles.sigmastep, 'Enable','Off');
-set(handles.decaystep, 'Enable','Off');
-set(handles.maxdwell, 'Enable','On');
-set(handles.mindwell, 'Enable','On');
-set(handles.meandwell, 'Enable','Off');
-set(handles.sigmadwell, 'Enable','Off');
-set(handles.decaydwell, 'Enable','Off');
+
 % Choose default command line output for StepMaker
 handles.output = hObject;
 % Update handles structure
@@ -149,6 +120,7 @@ function GenerateData_Callback(~, handles, ~)
 % hObject    handle to GenerateData (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+handles = guidata(StepMaker);
 Stepmaker(handles)
 
 function decaystep_Callback(hObject, ~, ~)
