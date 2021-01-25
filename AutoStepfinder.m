@@ -316,9 +316,6 @@ end
 
 function figure1_SizeChangedFcn(~, ~, ~)
 
-
-
-
  function autostepfinder_mainloop(initval,handles)
  % This is the main, multi-pass loop of the autostepfinder
  while initval.nextfile>0 
