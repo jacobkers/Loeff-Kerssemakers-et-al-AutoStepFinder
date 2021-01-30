@@ -82,10 +82,14 @@ function AutoStepFinder(handles)
       initval.basetresh     = initval.meanbase;                         %Treshhold the mean of your base line
     else
       initval.basetresh     = -100000;
-    end 
+    end
     
-    initval.bootstraprepeats=1000;                                         %add botstrap erorrs per step
-    
+    initval.booton   = get(handles.booton, 'Value');         %Noise estimation on
+    if initval.booton   == 1
+    initval.bootstraprepeats=1000;                           %Add bootstrap erorrs per step
+    else
+    initval.bootstraprepeats=0;
+    end
     initval.singlerun       = get(handles.singrun,'Value');             %Single or batch run
     if initval.singlerun    == 1
       initval.hand_load     =  1;                                       %Single Run
@@ -147,9 +151,11 @@ set(handles.basetreshoff,'Value', 1);
 set(handles.rerun,'enable','Off');
 set(handles.noisemaxdist,'Enable','Off');
 set(handles.noisemaxdist,'String',100);
-set(handles.noiseeston, 'value', 0)
-set(handles.noiseestoff, 'value', 1)
-set(handles.fitrange, 'string', 10000)
+set(handles.noiseeston, 'value', 0);
+set(handles.noiseestoff, 'value', 1);
+set(handles.fitrange, 'string', 10000);
+set(handles.errorest,'Visible','Off');
+set(handles.bootoff,'Value',1);
 % Choose default command line output for AutoStepfinder
 handles.output = hObject;
 % Update handles structure
@@ -288,6 +294,7 @@ if initval.AdvancedOn == 1
        set(handles.manualoff,'value',1);
        set(handles.PostPros, 'Visible','On'); 
        set(handles.noiseestoff, 'value', 1)
+       set(handles.errorest,'Visible','On');
 end
 initval.AdvancedOff=get(handles.advancedoff,'Value');
 if initval.AdvancedOff == 1
@@ -316,6 +323,8 @@ if initval.AdvancedOff == 1
        set(handles.noiseeston, 'value', 0)
        set(handles.noisemaxdist,'Enable','Off');
        set(handles.noisemaxdist,'String',100);
+       set(handles.errorest,'Visible','Off');
+       set(handles.bootoff,'Value',1);
 end
 
 function figure1_SizeChangedFcn(~, ~, ~)
