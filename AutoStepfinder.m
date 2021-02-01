@@ -44,6 +44,7 @@ end
 
 function AutoStepFinder(handles) 
      %% Parameters set in GUI
+     
     initval.datapath        = get(handles.data_path, 'string');         %Data path    
     initval.codefolder      = pwd;    
     initval.GlobalErrorAccept=0.1;                                      %User value for accepting a split or merge round solution
@@ -81,7 +82,14 @@ function AutoStepFinder(handles)
       initval.basetresh     = initval.meanbase;                         %Treshhold the mean of your base line
     else
       initval.basetresh     = -100000;
-    end       
+    end
+    
+    initval.booton   = get(handles.booton, 'Value');         %Noise estimation on
+    if initval.booton   == 1
+    initval.bootstraprepeats=1000;                           %Add bootstrap erorrs per step
+    else
+    initval.bootstraprepeats=0;
+    end
     initval.singlerun       = get(handles.singrun,'Value');             %Single or batch run
     if initval.singlerun    == 1
       initval.hand_load     =  1;                                       %Single Run
@@ -143,9 +151,11 @@ set(handles.basetreshoff,'Value', 1);
 set(handles.rerun,'enable','Off');
 set(handles.noisemaxdist,'Enable','Off');
 set(handles.noisemaxdist,'String',100);
-set(handles.noiseeston, 'value', 0)
-set(handles.noiseestoff, 'value', 1)
-set(handles.fitrange, 'string', 10000)
+set(handles.noiseeston, 'value', 0);
+set(handles.noiseestoff, 'value', 1);
+set(handles.fitrange, 'string', 10000);
+set(handles.errorest,'Visible','Off');
+set(handles.bootoff,'Value',1);
 % Choose default command line output for AutoStepfinder
 handles.output = hObject;
 % Update handles structure
@@ -284,6 +294,7 @@ if initval.AdvancedOn == 1
        set(handles.manualoff,'value',1);
        set(handles.PostPros, 'Visible','On'); 
        set(handles.noiseestoff, 'value', 1)
+       set(handles.errorest,'Visible','On');
 end
 initval.AdvancedOff=get(handles.advancedoff,'Value');
 if initval.AdvancedOff == 1
@@ -312,6 +323,8 @@ if initval.AdvancedOff == 1
        set(handles.noiseeston, 'value', 0)
        set(handles.noisemaxdist,'Enable','Off');
        set(handles.noisemaxdist,'String',100);
+       set(handles.errorest,'Visible','Off');
+       set(handles.bootoff,'Value',1);
 end
 
 function figure1_SizeChangedFcn(~, ~, ~)
@@ -338,7 +351,6 @@ function figure1_SizeChangedFcn(~, ~, ~)
         display('ERROR: AutoStepfinder detected more than two columns, please reformat data and try again')
         return    
     end
-    tic
     LD=length(Data);
     IndexAxis=(1:LD)';     
     stepnumber_firstrun=min([ceil(LD/4) initval.fitrange]);        
@@ -346,6 +358,8 @@ function figure1_SizeChangedFcn(~, ~, ~)
     S_Curves=zeros(stepnumber_firstrun+1,2); 
     N_found_steps_per_round=zeros(2,1); 
     full_split_log=[];
+    
+    %% core dual pass
     for fitround=1:2
         initval.stepnumber=stepnumber_firstrun;                         
         [FitResidu,~,S_Curve,split_indices,best_shot]=StepfinderCore(Residu,initval);       
@@ -359,7 +373,7 @@ function figure1_SizeChangedFcn(~, ~, ~)
         Fit=Fit+FitResidu ;       %new fit
     end    
     
-    %Final analysis: 
+    %% Final analysis: 
     if max(N_found_steps_per_round)==0, cla;
          nostepmessage=['No steps found in: ', SaveName];
          nostepbox=msgbox(nostepmessage,'Operation complete', 'help'); 
@@ -375,7 +389,6 @@ function figure1_SizeChangedFcn(~, ~, ~)
                             S_Curves, FinalSteps,N_found_steps_per_round);     
      end        
      disp('done!');
-     toc
  end
 
 
@@ -446,7 +459,13 @@ function [FitX,f,S,splitlog]=Split_until_ready(X,initval)
      [inxt, avl, avr,rankit]=Splitfast(X(istart:istop));           
      f=[[1, 1, 1, 0, 0,0];
         [istart, istop, inxt+istart-1, avl, avr,rankit]; ...
-        [N, N, N,0, 0,0,]];  
+        [N, N, N,0, 0,0,]]; 
+    
+    %build first counterfit:
+      cFitX=0*FitX; i1=1; i2=f(2,3); i3=N;
+      cFitX(i1:i2)=avl; cFitX(i2+1:i3)=avr;
+    
+    
      %parameters needed for calculating S(1):-----------------
     qx=sum(X.^2);                                   %sum of squared data
     qm=N*(mean(X))^2;                               %sum of squared averages plateaus, startvalue
@@ -462,7 +481,16 @@ function [FitX,f,S,splitlog]=Split_until_ready(X,initval)
         splitlog(c-1)=f(idx,3);                          %keep track of index order
         FitX=Adapt_Fit(f,idx,FitX);                     %adapt fit-curve
         [f,qm,aqm]=expand_f(f,qm,aqm,idx,X);            %adapt plateau-table; adapt S
-        S(c)=(qx-aqm)/(qx-qm);                             %Calculate new S-function               
+        
+        cFitX=Adapt_cFit(f,idx,cFitX,X);                     
+        %adapt fit-curve (note we use the updated split-table as we need
+        %the new fields)
+        
+        if 1
+            S(c)=mean((X-cFitX).^2)/mean((X-FitX).^2);         %direct fit   
+        else
+            S(c)=(qx-aqm)/(qx-qm);                             %Calculate new S-function 
+        end
         stop=(1.0*c>initval.stepnumber);
     end   %-------------------------------------------------------------------
           
@@ -517,12 +545,23 @@ function FitX=Adapt_Fit(f,idx,FitX)
 	i1=f(idx,1); i2=f(idx,3);av1=f(idx,4);
     i3=f(idx,3)+1; i4=f(idx,2);av2=f(idx,5);
     FitX(i1:i2)=av1; FitX(i3:i4)=av2;
-              
- function [idx, avl, avr,rankit]=Splitfast(Segment)              %
+
+function cFitX=Adapt_cFit(f,idx,cFitX,X)
+	%This function adapts the counterfit locally
+	i1=f(idx-1,3); 
+    i2=f(idx,3);
+    i3=f(idx+1,3); 
+    i4=f(idx+2,3);
+    cFitX(i1+1:i2)=mean(X(i1+1:i2)); 
+    cFitX(i2+1:i3)=mean(X(i2+1:i3));
+    cFitX(i3+1:i4)=mean(X(i3+1:i4));    
+    
+ function [idx, avl, avr,rankit,errorcurve]=Splitfast(Segment)              %
 %this function also adresses a one-dim array 'Segment'
 %and determines the best step-fit there
 %To save time, functions like 'mean' are avoided
-    w=length(Segment);     
+    w=length(Segment);   
+    Chisq=(1:w-1)*0;  
     if w>3
 		Chisq=(1:w-1)*0;                           
         AvL=Segment(1);    AvR=sum(Segment(2:w))/(w-1); AvAll=sum(Segment)/w;  
@@ -547,6 +586,7 @@ function FitX=Adapt_Fit(f,idx,FitX)
                 idx=1;  avl=Segment(1); avr=Segment(2); 
         end
     end
+    errorcurve=Chisq/(w-1);
 
   function FitX=Get_FitFromStepsindices(X,indexlist,initval) 
       
@@ -613,10 +653,10 @@ for i=1:ls
     if strcmp(steperrorestimate,'measured')
         rmsbefore=std(X(i1+1:i2));
         rmsafter=std(X(i2+1:i3)) ;
-        StepsX(i,col+1)=2*(rmsbefore^2/Nbefore+rmsafter^2/Nafter)^0.5; %plus minus 95%
+        StepsX(i,col+1)=2*((rmsbefore^2/Nbefore+rmsafter^2/Nafter)^0.5)/2^0.5; %plus minus 95%
     end
     if strcmp(steperrorestimate,'predicted')
-        StepsX(i,col+1)=2*(globalnoise^2/Nbefore+globalnoise^2/Nafter)^0.5; %plus minus 95%
+        StepsX(i,col+1)=2*(globalnoise^2/Nbefore+globalnoise^2/Nafter)^0.5/2^0.5;; %plus minus 95%
     end
     i1=i2;
 end
@@ -626,9 +666,7 @@ function [FinalSteps, FinalFit]=BuildFinalfit(T,X,splitlog,initval)
 %build a step fit based on all retained indices. Perform step-by-step error
 %analysis to accept second-round (residual) steps or not 
     best_shot=length(find(splitlog(:,2)<3)); %all non-duplicates
-    
-    
-    
+  
     if (initval.manualoff==1 && initval.manualon==0)
         steps_to_pick=round(initval.overshoot*best_shot);
     end
@@ -675,6 +713,13 @@ function [FinalSteps, FinalFit]=BuildFinalfit(T,X,splitlog,initval)
         FinalRoundNo(ii)=candidateround_no(sel(1));
     end        
     FinalSteps(:,9)=FinalRoundNo;  
+    
+    if initval.bootstraprepeats>0
+        [err_st, err_t, ~,~ ]=bootstrap_get_errors(X, final_idxes,initval.bootstraprepeats);
+        FinalSteps(:,10)=err_st;
+        FinalSteps(:,11)=err_t;
+    end
+            
     
 function [data,SaveName,initval]=Get_Data(initval, handles)
 % This function loads the data, either standard or user-choice
@@ -866,6 +911,98 @@ while ratio<sigchange     %if not too much changes anymore; the higher this numb
 end
 cleandata=data(selc); 
 
+function [error_st_boot, error_t_boot, t_refit,error_t_refit]=bootstrap_get_errors(data, indices,bootstraprepeats)
+% bootstrap 
+%Aim: bootstrap to get location error (plus a time estimate)
+
+%use: [error_t_boot,error_t_refit,error_st_boot]=get_errors_by_bootstrap(data, indices)
+
+%Input: 
+%data: original data, sigle column, 
+%indices: locations of stepfits, in pts
+%
+
+%Output:
+% error_t_boot: 95% confidence range of error in time (pts) by bootstrapping
+% t_refit: location obtained by re-fitting
+% error_t_refit: difference of input step location and location obtained by re-fitting
+% error_st_boot:  95% confidence range of error in sep size by bootstrapping
+
+%References: 
+%following method:
+%[1] Received 18 Jul 2015 | Accepted 16 Nov 2015 | Published 17 Dec 2015 
+% ATP hydrolysis assists phosphate release and promotes reaction ordering in F1-ATPase 
+% Chun-Biu Li1, Hiroshi Ueno2, Rikiya Watanabe2,3,4, Hiroyuki Noji2,4 & Tamiki Komatsuzaki1
+
+
+%% bootstrap main cycle
+%loop all segments
+N_steps=length(indices-2);
+error_t_refit=zeros(N_steps,1);
+error_t_boot=zeros(N_steps,1);
+error_st_boot=zeros(N_steps,1);
+
+t_refit=zeros(N_steps,1);
+
+indices_ext=[0; indices; length(data)];
+
+for ii=1:length(indices)
+    %% 1) our usual step fit to get step location (plus extra export of error curve)
+    Segment=data(indices_ext(ii)+1:indices_ext(ii+2));
+    idx_old=indices(ii);  %input location
+    [idx, ~, ~,~, error_curve]=Splitfast(Segment) ;
+    
+    %note that we also obtain a new estimate for the best fit in this
+    %segment:
+    t_refit(ii)=indices_ext(ii)+idx;
+    
+    %% 2 bootstrapping
+    % repeat plateau fits left and right by bootstrapping 
+    %(location is kept constant)
+    tic
+     %repeat many times:
+    leftpart=Segment(1:idx);        L_left=length(leftpart);
+    rightpart=Segment(idx+1:end);   L_right=length(rightpart);
+
+    [bootstat_av_left,bootsam_left] = bootstrp(bootstraprepeats,@mean,leftpart);  %resample left, get many left averages
+    [bootstat_av_right,bootsam_right] = bootstrp(bootstraprepeats,@mean,rightpart); %resample right, get many right averages
+    stepsize_boot=bootstat_av_right-bootstat_av_left;
+
+    %% 3 Get the value Chi-square(idx) for all resamplings.
+    %To gain time, work matrix-wise :
+    %expand the plateau results in a block, such that every column is a new step-fit
+    %build with the resampled left and right averages
+    newstep_indices=[bootsam_left; idx+bootsam_right];  %matrix of indices
+    NewSegments=Segment(newstep_indices);
+    NewFits=[repmat(bootstat_av_left,1,L_left) repmat(bootstat_av_right,1,L_right)]';
+
+    all_chi_squares=(mean((NewSegments-NewFits).^2)).^0.5;
+    bootstrap_error_of_minimum_value=1.96*std(all_chi_squares);
+
+
+
+    %% 4 get estimate of 95% confidence range of value of Errcurv at minimum
+    %to increase precision, we interpolate 10-fold near the minimum
+    LL=length(error_curve);
+    nearmin_lox=max([1 idx-50]);
+    nearmin_hix=min([LL idx+50]);
+    axz=nearmin_lox:nearmin_hix;
+    axz_ip=nearmin_lox:0.1:nearmin_hix;
+    Errcurv_blowup=interp1(axz,error_curve(axz),axz_ip);
+
+    sel=find(abs(Errcurv_blowup-error_curve(idx))<=bootstrap_error_of_minimum_value);
+    lox_ip=min(sel);  
+    hix_ip=max(sel);
+
+    lox=axz_ip(lox_ip); 
+    hix=axz_ip(hix_ip);
+    
+    error_t_refit(ii,1)=abs(t_refit(ii)-idx_old);
+    error_t_boot(ii,1)=(hix-lox)/2;
+    error_st_boot(ii,1)=1.96*std(stepsize_boot)/(2^0.5);
+end
+
+
 function SaveAndPlot(initval,SaveName,handles,...
         IndexAxis,Data,FinalFit,...
         S_Curves, FinalSteps,N_found_steps_per_round)
@@ -906,6 +1043,12 @@ disp('Saving Files...')
                                    *initval.resolution;  
       StepError                 =  FinalSteps(idx_steps,8);             %Error of each step
       
+      if initval.bootstraprepeats>0  %add bootstrap step errros                                         
+            StepError_boot       =  FinalSteps(idx_steps,10);             %Error of each step
+            DwellError_boot      =  FinalSteps(idx_steps,11)...           %Dwelltime step after
+                                   *initval.resolution;  
+      end
+      
       curpth=pwd;
       cd(initval.SaveFolder);
       
@@ -921,10 +1064,19 @@ disp('Saving Files...')
           case 'txt' 
               config_table              = struct2table(orderfields(initval));              
               fits_table                = table(Time, Data, FinalFit);          %Save variables in table           
+              
+              
+              if initval.bootstraprepeats==0           
               properties_table          = table(IndexStep,TimeStep,...          %Save variables in table
                                           LevelBefore,LevelAfter,StepSize,...
                                           DwellTimeStepBefore,DwellTimeStepAfter,StepError);
-               s_curve_table              = table(Stepnumber, SCurveRound1,...    %Save variables in table 
+              else
+              properties_table          = table(IndexStep,TimeStep,...          %Save variables in table
+                                          LevelBefore,LevelAfter,StepSize,...
+                                          DwellTimeStepBefore,DwellTimeStepAfter,StepError,...
+                                          StepError_boot, DwellError_boot);
+              end
+              s_curve_table              = table(Stepnumber, SCurveRound1,...    %Save variables in table 
                                           SCurveRound2);                         
        if initval.fitsoutput == 1
                writetable(fits_table, [SaveName,'_fits.txt']);                   %Save table containing fits                       
@@ -943,12 +1095,19 @@ disp('Saving Files...')
        if initval.fitsoutput == 1       
               save([SaveName,'_fits'],'Time', 'Data', 'FinalFit'); 
        end
-       if initval.propoutput == 1
+       if (initval.propoutput == 1 && initval.bootstraprepeats==0)
               save([SaveName,'_properties'],...
                  'IndexStep','TimeStep',...   
                  'LevelBefore','LevelAfter','StepSize',...
                  'DwellTimeStepBefore','DwellTimeStepAfter',...
                  'StepError');
+       end       
+      if (initval.propoutput == 1 && initval.bootstraprepeats>0)
+              save([SaveName,'_properties'],...
+                 'IndexStep','TimeStep',...   
+                 'LevelBefore','LevelAfter','StepSize',...
+                 'DwellTimeStepBefore','DwellTimeStepAfter',...
+                 'StepError', 'StepError_boot','DwellError_boot');
        end
        if initval.scurvesoutput == 1 
                save([SaveName,'_s_curve'],...
