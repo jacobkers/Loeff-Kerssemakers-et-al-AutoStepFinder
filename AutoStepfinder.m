@@ -955,6 +955,7 @@ for ii=1:length(indices)
     %note that we also obtain a new estimate for the best fit in this
     %segment:
     t_refit(ii)=indices_ext(ii)+idx;
+    error_t_refit(ii,1)=abs(t_refit(ii)-idx_old);
     
     %% 2 bootstrapping
     % repeat plateau fits left and right by bootstrapping 
@@ -964,42 +965,47 @@ for ii=1:length(indices)
     leftpart=Segment(1:idx);        L_left=length(leftpart);
     rightpart=Segment(idx+1:end);   L_right=length(rightpart);
 
-    [bootstat_av_left,bootsam_left] = bootstrp(bootstraprepeats,@mean,leftpart);  %resample left, get many left averages
-    [bootstat_av_right,bootsam_right] = bootstrp(bootstraprepeats,@mean,rightpart); %resample right, get many right averages
-    stepsize_boot=bootstat_av_right-bootstat_av_left;
+    if ((L_left>20)&(L_right>20))    
+        [bootstat_av_left,bootsam_left] = bootstrp(bootstraprepeats,@mean,leftpart);  %resample left, get many left averages
+        [bootstat_av_right,bootsam_right] = bootstrp(bootstraprepeats,@mean,rightpart); %resample right, get many right averages
+        stepsize_boot=bootstat_av_right-bootstat_av_left;
 
-    %% 3 Get the value Chi-square(idx) for all resamplings.
-    %To gain time, work matrix-wise :
-    %expand the plateau results in a block, such that every column is a new step-fit
-    %build with the resampled left and right averages
-    newstep_indices=[bootsam_left; idx+bootsam_right];  %matrix of indices
-    NewSegments=Segment(newstep_indices);
-    NewFits=[repmat(bootstat_av_left,1,L_left) repmat(bootstat_av_right,1,L_right)]';
+        %% 3 Get the value Chi-square(idx) for all resamplings.
+        %To gain time, work matrix-wise :
+        %expand the plateau results in a block, such that every column is a new step-fit
+        %build with the resampled left and right averages
+        newstep_indices=[bootsam_left; idx+bootsam_right];  %matrix of indices
+        NewSegments=Segment(newstep_indices);
+        NewFits=[repmat(bootstat_av_left,1,L_left) repmat(bootstat_av_right,1,L_right)]';
 
-    all_chi_squares=(mean((NewSegments-NewFits).^2)).^0.5;
-    bootstrap_error_of_minimum_value=1.96*std(all_chi_squares);
+        all_chi_squares=(mean((NewSegments-NewFits).^2)).^0.5;
+        bootstrap_error_of_minimum_value=1.96*std(all_chi_squares);
 
 
 
-    %% 4 get estimate of 95% confidence range of value of Errcurv at minimum
-    %to increase precision, we interpolate 10-fold near the minimum
-    LL=length(error_curve);
-    nearmin_lox=max([1 idx-50]);
-    nearmin_hix=min([LL idx+50]);
-    axz=nearmin_lox:nearmin_hix;
-    axz_ip=nearmin_lox:0.1:nearmin_hix;
-    Errcurv_blowup=interp1(axz,error_curve(axz),axz_ip);
+        %% 4 get estimate of 95% confidence range of value of Errcurv at minimum
+        %to increase precision, we interpolate 10-fold near the minimum
+        LL=length(error_curve);
+        nearmin_lox=max([1 idx-50]);
+        nearmin_hix=min([LL idx+50]);
+        axz=nearmin_lox:nearmin_hix;
+        axz_ip=nearmin_lox:0.1:nearmin_hix;
+        Errcurv_blowup=interp1(axz,error_curve(axz),axz_ip);
 
-    sel=find(abs(Errcurv_blowup-error_curve(idx))<=bootstrap_error_of_minimum_value);
-    lox_ip=min(sel);  
-    hix_ip=max(sel);
+        sel=find(abs(Errcurv_blowup-error_curve(idx))<=bootstrap_error_of_minimum_value);
+        lox_ip=min(sel);  
+        hix_ip=max(sel);
 
-    lox=axz_ip(lox_ip); 
-    hix=axz_ip(hix_ip);
-    
-    error_t_refit(ii,1)=abs(t_refit(ii)-idx_old);
-    error_t_boot(ii,1)=(hix-lox)/2;
-    error_st_boot(ii,1)=1.96*std(stepsize_boot)/(2^0.5);
+        lox=axz_ip(lox_ip); 
+        hix=axz_ip(hix_ip);
+
+        
+        error_t_boot(ii,1)=(hix-lox)/2;
+        error_st_boot(ii,1)=1.96*std(stepsize_boot)/(2^0.5);
+    else %too short plateaus, do not bootstrap
+        error_t_boot(ii,1)=NaN;
+        error_st_boot(ii,1)=NaN;
+    end
 end
 
 
