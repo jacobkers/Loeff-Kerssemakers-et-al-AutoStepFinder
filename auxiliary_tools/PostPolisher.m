@@ -156,41 +156,10 @@ figure(35);
 close(gcf);
 figure(35);
 plot(XX,'k-','LineWidth', 2); hold on;
-plot(oriFitX, 'c-','LineWidth', 1.5);
-plot(FitX, 'r-', 'LineWidth', 2);
+plot(oriFitX, 'r-','LineWidth', 1.5);
+plot(FitX, 'y-', 'LineWidth', 2);
 legend('data','original fit','processed fit');
-
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    dum=1;
-
-
+ 
 
 function [FitX_merged,StepFitProps_out]=DeSpiker(spikemaxwidth, updownmargin, spikesign,XX,FitX)
 %% Remove spikes
