@@ -44,6 +44,7 @@ end
 % End initialization code - DO NOT EDIT
 
 function Postpolisher(handles)
+    
 %% settings for despiking
     init.despike            =get(handles.despikeon,'Value');            %Despiking on
     init.spikemaxwidth      =str2double(get(handles.width,'String'));  
@@ -151,6 +152,8 @@ if ~strcmp(run_modus, 'demo')
     Save_AS_formats(TT,XX,FitX,step_props,SaveName, PathName);
 end
 %% plot
+figure(35);
+close(gcf);
 figure(35);
 plot(XX,'k-','LineWidth', 2); hold on;
 plot(oriFitX, 'c-','LineWidth', 1.5);
@@ -456,6 +459,8 @@ end
 
 if nargin <3
     figure(63);
+    close(gcf);
+    figure(63);
     plot(XX,'k-','LineWidth', 2); hold on;
     plot(oriFitX, 'c-','LineWidth', 1.5);
       plot(FitX, 'r-', 'LineWidth', 2);
@@ -760,6 +765,28 @@ function Save_AS_formats(TT,XX,FitX,step_props,SaveName, PathName);
       writetable(properties_table, [SaveName,'_properties.txt']);       %Save table containing properties                                
       cd(curpth);
 
+function StepsX=AddStep_Errors(XX,StepsX)   
+%This function calculates step errors associated with the steps.
+%from the standard deviation of the adjacent plateaus
+
+[ls,col]=size(StepsX); 
+i1=0;
+for ii=1:ls
+    i2=StepsX(ii,1);
+    if ii<ls
+        i3=StepsX(ii+1,1);
+    else 
+        i3=length(XX);
+    end    
+    Nbefore=i2-i1;    
+    Nafter=i3-i2;
+      
+    rmsbefore=std(XX(i1+1:i2));
+    rmsafter=std(XX(i2+1:i3)) ;
+    StepsX(ii,col+1)=2*((rmsbefore^2/Nbefore+rmsafter^2/Nafter)^0.5)/2^0.5; %plus minus 95%
+    i1=i2;
+end
+
 
 % --- Executes just before PostPolisher is made visible.
 function PostPolisher_OpeningFcn(hObject, eventdata, handles, varargin)
@@ -778,8 +805,8 @@ set(handles.dirdown,'enable','On')
 set(handles.width,'enable','On')
 set(handles.margin,'enable','On')
 set(handles.widthmerge,'enable','Off')
-set(handles.errorestoff,'Value',1)
-set(handles.erroreston,'Value',0)
+%set(handles.errorestoff,'Value',1)
+%set(handles.erroreston,'Value',0)
 set(handles.directory,'String',pwd)
 % Update handles structure
 guidata(hObject, handles);
@@ -849,7 +876,7 @@ function width_Callback(hObject, eventdata, handles)
 
 
 % --- Executes on button press in despikeon.
-function despikeon_Callback(hObject, eventdata, handles)
+function despikeon_Callback(~, ~, handles)
 set(handles.dirboth,'enable','On')
 set(handles.dirup,'enable','On')
 set(handles.dirdown,'enable','On')
@@ -858,7 +885,7 @@ set(handles.margin,'enable','On')
 set(handles.widthmerge,'enable','Off')
 
 % --- Executes on button press in mergeon.
-function mergeon_Callback(hObject, eventdata, handles)
+function mergeon_Callback(~, ~, handles)
 set(handles.dirboth,'enable','Off')
 set(handles.dirup,'enable','Off')
 set(handles.dirdown,'enable','Off')
