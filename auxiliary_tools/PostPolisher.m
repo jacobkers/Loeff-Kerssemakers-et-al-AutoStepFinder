@@ -774,8 +774,8 @@ set(handles.dirdown,'enable','On')
 set(handles.width,'enable','On')
 set(handles.margin,'enable','On')
 set(handles.widthmerge,'enable','Off')
-%set(handles.errorestoff,'Value',1)
-%set(handles.erroreston,'Value',0)
+set(handles.errorestoff,'Value',1)
+set(handles.erroreston,'Value',0)
 set(handles.directory,'String',pwd)
 % Update handles structure
 guidata(hObject, handles);
@@ -810,7 +810,7 @@ function go_Callback(~, ~, handles)
 % hObject    handle to go (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-handles = guidata(PostPolisher);
+
 Postpolisher(handles)
 
 
