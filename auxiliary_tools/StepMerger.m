@@ -46,6 +46,7 @@ end
 function Step_merger_main(handles)
     
 %% settings for despiking
+    init.path               =get(handles.directory, 'String');
     init.despike            =get(handles.despikeon,'Value');            %Despiking on
     init.spikemaxwidth      =str2double(get(handles.width,'String'));  
     init.updownmargin       =str2double(get(handles.margin,'String'));  %fraction that steps can be different
@@ -803,12 +804,12 @@ Step_merger_main(handles)
 
 
 function directory_Callback(hObject, eventdata, handles)
-% hObject    handle to directory (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: get(hObject,'String') returns contents of directory as text
-%        str2double(get(hObject,'String')) returns contents of directory as a double
+chckfldr=get(hObject,'String');
+chckfldr= exist(chckfldr);
+if chckfldr ~= 7,  msgbox('The provided directory is not valid.','ERROR', 'error')
+    pwd=cd;
+    set(hObject, 'String', cd);
+    return; end
 
 
 
