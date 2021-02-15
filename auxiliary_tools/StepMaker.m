@@ -169,23 +169,24 @@ for rp=1:initval.repeats
 
 
     %% plot
-    figure(169);
+    close(findobj('type','figure','name','Distributions and Trace'));        %close S-curve plots --> for batch mode
+    figure('Name','Distributions and Trace','NumberTitle','off','units', 'normalized', 'position', [0.05 0.35 0.5 0.5]);
+    %figure(169);
     subplot(2,2,1);
-        bar(binaxis_steps,step_distribution, 'w');
+        bar(binaxis_steps,step_distribution, 'w','Linewidth',1);
         title('Step Sizes');
         xlabel('step size, a.u.');
         ylabel('occurence, a.u.');
         axis tight;
     subplot(2,2,2); 
-        bar(binaxis_dwells,dwell_distribution, 'w');
+        bar(binaxis_dwells,dwell_distribution, 'w','Linewidth',1);
         title('Dwell Times');
         xlabel('dwell time, pts');
         ylabel('occurence, a.u.');
         axis tight;
     subplot(2,1,2);
-        plot(data(:,1),data(:,2), 'k-','Linewidth',2);
-
-        title('Trace')
+        plot(data(:,1),data(:,2), 'b-','Linewidth',1);
+        title('Trace');
     pause(0.1);
 
 
@@ -300,8 +301,10 @@ varargout{1} = handles.output;
 
 function stepsnumber_Callback(hObject, ~, ~)
 checkmax_stepsnumber=get(hObject,'String');
-checkmax_stepsnumber=isnan(str2double(checkmax_stepsnumber));
-     if checkmax_stepsnumber==1
+checkNan_stepsnumber=isnan(str2double(checkmax_stepsnumber));
+checkmax_stepsnumber=str2double(checkmax_stepsnumber);
+
+     if checkNan_stepsnumber==1
          msgbox('The number of steps is NaN.','ERROR', 'error')
          set(hObject,'String',20);
      return;

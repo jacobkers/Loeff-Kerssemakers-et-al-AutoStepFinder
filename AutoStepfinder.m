@@ -1125,11 +1125,13 @@ disp('Saving Files...')
        end
        
       end
-      cd(curpth);
+      %cd(curpth);
+      cd(initval.codefolder);
 
  %% Plotting in GUI  
         close(findobj('type','figure','name','S-Curve Evaluation'));        %close S-curve plots --> for batch mode
         close(findobj('type','figure','name','User plots'));                %close user plots --> for batch mode
+        close(findobj('type','figure','name','Noise_Estimator'));                %close noise plots --> for batch mode
         cla;                                                                %clear axes 
         axis(handles.plot_fit);
         plot(Time,Data,...                                                  %Plot Data
@@ -1179,6 +1181,7 @@ disp('Saving Files...')
             cd(initval.SaveFolder);                                             %Set current directory to savefolder                                                   
             saveas(findobj('type','figure','name','User plots'),...             %Save userplot figure as jpg
             [initval.SaveFolder '\' SaveName '_user_plot.jpg']);
+            cd(initval.codefolder);
             end
         end
  %% Plotting S-Curve Evaluation
@@ -1191,7 +1194,7 @@ disp('Saving Files...')
     stepno_round2=N_found_steps_per_round(2);
     MK=1.1*max(S_Curves(:));
     
-    figure('Name','S-Curve Evaluation','NumberTitle','off','units', 'normalized', 'position', [0.745 0.32 0.25 0.6]);
+    figure('Name','S-Curve Evaluation','NumberTitle','off','units', 'normalized', 'position', [0.745 0.38 0.25 0.5]);
     %S-Curve round 1
     SCurve1Plt=subplot(1,1,1);
     cla(SCurve1Plt);
@@ -1230,17 +1233,19 @@ disp('Saving Files...')
             if initval.singlerun == 0                                           %Save userplot jpg if batch run is on
             cd(initval.SaveFolder);                                             %Set current directory to savefolder  
             saveas(findobj('type','figure','name','S-Curve Evaluation'),...     %Save S-curve figure as jpg
-            [SaveName '_s_curve.jpg'])
+            [SaveName '_s_curve.jpg']);
+            cd(initval.codefolder);
             end
         end
         
-%noise estimation
+%% building and plotting noise estimation
 tracelimit=min([length(Time), 10000]);   %crop long traces
 max_range= initval.max_range;  %range to consider
 if max_range < 1;
     max_range = 2;
     msgbox('The time range for noise estimation is smaller than 1 and has been rescaled to a value of 2.','Warning', 'warn')
 end
+
 if initval.estimatenoise==1
 trace = Data - FinalFit;
 Cp=length(trace);
@@ -1262,7 +1267,7 @@ for rg=1:max_range
     noisecurve(rg)=(nanmean(sqdif_lo)).^0.5/(2^0.5);
 end
 
-figure('Name','Noise_Estimator','NumberTitle','off','units', 'normalized', 'position', [0.745 0.1 0.25 0.4]);
+figure('Name','Noise_Estimator','NumberTitle','off','units', 'normalized', 'position', [0.57 0.1 0.40 0.15]); %[0.745 0.1 0.25 0.4])
   %[0.745 0.32 0.25 0.6]);
     plot(noisecurve,'LineWidth',2, 'Color',[0,0.2,1]);  hold on
     plot(1,noisecurve(1),'ro','MarkerSize',12);  hold on       
@@ -1274,9 +1279,14 @@ figure('Name','Noise_Estimator','NumberTitle','off','units', 'normalized', 'posi
     mediannoise=num2str(est_noise);
     text(5,noisecurve_est(1),mediannoise)
     title('Noise estimate')
-    legend('Residual noise','Pairwise distance estimate', 'Median','Location', 'SouthOutSide');
- end
-  function User_Plot_Result(~,~,~,FinalSteps,~,initval) 
+    legend('Residual noise','Pairwise distance estimate', 'Median','Location', 'WestOutSide');
+    if initval.singlerun == 0                            %if batch run is on
+        pause(1);
+    end
+    hold off;
+end
+
+    function User_Plot_Result(~,~,~,FinalSteps,~,initval)
 %This function can be used to present user (and experiment-specific plots
 %using the standard stepfinder output
 
@@ -1296,7 +1306,7 @@ StepSize       =  LevelAfter - LevelBefore; %Size of step
 % DwellTimeStep  =  FinalSteps(idx_steps,7)*initval.resolution; %Dwelltime step  
 % ---------------------------------------------   
 
-figure('Name','User plots','NumberTitle','off','units', 'normalized', 'position', [0.01 0.05 0.3 0.3]);
+figure('Name','User plots','NumberTitle','off','units', 'normalized', 'position', [0.05 0.1 0.45 0.15]);
 % %%  Transition Density Plot
 %     DensityPlt = subplot(2,1,1);
 %     cla(DensityPlt);
@@ -1312,7 +1322,7 @@ figure('Name','User plots','NumberTitle','off','units', 'normalized', 'position'
 %     ylabel('Level After');
 
 %Step-Level
-    StepLPlt = subplot(2,1,1);
+    StepLPlt = subplot(1,2,1);
     cla(StepLPlt);
     StepBinsize = round(sqrt(length(LevelAfter)),0);
     [histcounts, ~]= hist(LevelAfter,StepBinsize);
@@ -1326,7 +1336,7 @@ figure('Name','User plots','NumberTitle','off','units', 'normalized', 'position'
     %xlim([0 xlimstep]);
         
 %Step-size
-    StepSPlt = subplot(2,1,2);
+    StepSPlt = subplot(1,2,2);
     cla(StepSPlt);
     StepBinsize = round(sqrt(length(StepSize)),0);
     [histcounts, ~]= hist(StepSize,StepBinsize);

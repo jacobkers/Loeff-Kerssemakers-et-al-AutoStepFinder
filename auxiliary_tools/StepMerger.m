@@ -62,7 +62,7 @@ function Step_merger_main(handles)
     
 function Step_merger_main_mainloop(init)
 %This function combines options for merging small step trains, or
-
+init.codepath=pwd;
 
 if init.spikeup,  init.spikesign=1;else
 if init.spikedown,   init.spikesign=-1;else
@@ -85,24 +85,12 @@ switch run_modus
         SlopeMerger;
          FileName='test_fits.txt';
          PathName=[pwd, '/'];
-    case 'quickload'
-         FileName='hmm_8States1NoiseRatio_15Revisits118steps2000pts_rp2_trace_fits.txt';
-         PathName=[pwd ,'\processor_test'];
-        data=double(dlmread(strcat(PathName,'/',FileName),',',2,0));
-        TT=data(:,1);  
-        XX=data(:,2);
-        FitX=data(:,3);
-        oriFitX=FitX;
-        %% run
-        if init.despike, [FitX,step_props]=DeSpiker(init.spikemaxwidth, init.updownmargin, init.spikesign,XX,FitX);
-        end  
-        if init.slopemerge, [FitX,step_props]=SlopeMerger(init.wmin,XX,FitX);
-        end
-        dum=1;
     case 'default'
         %% load
+        cd(init.path);
         [FileName,PathName] = uigetfile('*_fits.txt', 'Open the fit of interest');
         data=double(dlmread(strcat(PathName,'/',FileName),',',2,0));
+        cd(init.codepath);
         TT=data(:,1);  
         XX=data(:,2);
         FitX=data(:,3);
@@ -141,11 +129,11 @@ if ~strcmp(run_modus, 'demo')
     Save_AS_formats(TT,XX,FitX,step_props,SaveName, PathName);
 end
 %% plot
-figure(35);
-close(gcf);
-figure(35);
-plot(XX,'k-','LineWidth', 2); hold on;
-plot(oriFitX, 'r-','LineWidth', 1.5);
+close(findobj('type','figure','name','Merged Trace'));        %close S-curve plots --> for batch mode
+figure('Name','Merged Trace','NumberTitle','off','units', 'normalized', 'position', [0.02 0.5 0.6 0.3]);
+
+plot(XX,'b-','LineWidth', 2); hold on;
+plot(oriFitX, 'r-','LineWidth', 2);
 plot(FitX, 'y-', 'LineWidth', 2);
 legend('data','original fit','processed fit');
  
