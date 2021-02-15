@@ -1209,7 +1209,7 @@ disp('Saving Files...')
     else
     plot(stepno_round1,SCurveRound1(stepno_round1),'ko','MarkerFaceColor','k','MarkerSize',6);
     title('Multi-pass S-curves');
-    legend('Round 1','Round 2','Threshold','S_P_1^m^a^x','S_P_2^m^a^x','Final');
+    %legend('Round 1','Round 2','Threshold','S_P_1^m^a^x','S_P_2^m^a^x','Final');
     if stepno_round2>0
         plotidx=stepno_round2; 
     else
