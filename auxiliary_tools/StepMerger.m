@@ -43,7 +43,7 @@ else
 end
 % End initialization code - DO NOT EDIT
 
-function Postpolisher(handles)
+function Step_merger_main(handles)
     
 %% settings for despiking
     init.despike            =get(handles.despikeon,'Value');            %Despiking on
@@ -57,25 +57,11 @@ function Postpolisher(handles)
     init.wmin               =str2double(get(handles.widthmerge,'String'));  %Max width
 %% Bootstrap settings
     init.booton             =get(handles.erroreston,'Value'); %bootstrapping on
-    Postpolisher_mainloop(init)
+    Step_merger_main_mainloop(init)
     
-function Postpolisher_mainloop(init)
+function Step_merger_main_mainloop(init)
 %This function combines options for merging small step trains, or
 
-if 0
-    %development section
-    %% settings for despiking
-    init.despike=1;
-    init.spikemaxwidth=7;   
-    init.updownmargin=0.4,  %fraction that steps can be different
-    
-    init.spikesign=0; % -1: negative 0: all +1: positive spikes
-
-    %% settings for slope merging
-    init.slopemerge=0;
-    init.wmin=3;        %max plateau width for merging
-    init.bootstraprepeats=1000;                           %Add bootstrap erorrs per step
-end
 
 if init.spikeup,  init.spikesign=1;else
 if init.spikedown,   init.spikesign=-1;else
@@ -121,9 +107,11 @@ switch run_modus
         FitX=data(:,3);
         oriFitX=FitX;
         %% run
-        if init.despike, [FitX,step_props]=DeSpiker(init.spikemaxwidth, init.updownmargin, init.spikesign,XX,FitX);
+        if init.despike, 
+            [FitX,step_props]=DeSpiker(init.spikemaxwidth, init.updownmargin, init.spikesign,XX,FitX);
         end  
-        if init.slopemerge, [FitX,step_props]=SlopeMerger(init.wmin,XX,FitX);
+        if init.slopemerge, 
+            [FitX,step_props]=SlopeMerger(init.wmin,XX,FitX);
         end  
 end   
 
@@ -811,7 +799,7 @@ function go_Callback(~, ~, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-Postpolisher(handles)
+Step_merger_main(handles)
 
 
 function directory_Callback(hObject, eventdata, handles)
