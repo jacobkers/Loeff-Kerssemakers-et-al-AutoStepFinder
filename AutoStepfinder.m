@@ -1,13 +1,13 @@
 %% AutoStepfinder: A fast and automated step detection method for single-molecule analysis.
 %Luuk Loeff*, Jacob Kerssemakers*, Chirlmin Joo & Cees Dekker.
 % * Equal contribution
-% Last update: October 2020
+% Last update: March 2021
 %% Concise de overview: for details and explanation refer to main text.
 %Lines 10-290 contain standard GUI related functions
-%Lines 290-330 contain the main loop as described in Figure S1
-%Lines 330-520 contain the 'core code' of a single-pass stepfinder
-%Lines 520-765 contain code related to dual-pass actions
-%Lines 767-end contain code related to saving and plotting
+%Lines 330-390 contain the main loop as described in Figure S1
+%Lines 396-421 contain the 'core code' of a single-pass stepfinder
+%Lines 609-865 contain code related to dual-pass actions
+%Lines 1009-end contain code related to saving and plotting
 
   
 function varargout = AutoStepfinder(varargin)
@@ -328,9 +328,6 @@ if initval.AdvancedOff == 1
 end
 
 function figure1_SizeChangedFcn(~, ~, ~)
-
-
-
 
  function autostepfinder_mainloop(initval,handles)
  % This is the main, multi-pass loop of the autostepfinder
@@ -865,9 +862,7 @@ function [StepsX,levelX, histX]=Get_StepTableFromFit(T,FitX)
         histX=[1 1];
     end
     
-    
- 
-    
+  
  function [flag,cleandata,treshold]=Outlier_flag(data,tolerance,sigchange,how,sho)
 %this function is meant to find a representative value for a standard
 %deviation in a heavily skewed distribution (typically, flat data with
