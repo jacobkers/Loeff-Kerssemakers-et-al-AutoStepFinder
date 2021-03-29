@@ -14,29 +14,19 @@ Single-molecule techniques allow the visualization of the molecular dynamics of 
 
 HIGHLIGHTS
 •	Fast, automated, and bias-free detection of steps within single-molecule trajectories.
-
 •	Robust step detection without any prior knowledge on the data.
-
 •	A dual-pass strategy for the detection of steps over a wide variety of scales.
-
 •	A user-friendly interface for a simplified step fitting procedure.
 
 REPOSITORY CONTENTS
 •	code to analyze steps: 'AutoStepFinder'
-
 •	code for cleaning data from corrupted points (such as Inf): 'DataDuster'
-
 •	code for generating test traces : 'StepMaker'
-
 •	zip file containing test traces
 
 FOR USERS
 •	an elaborate manual is included with Supplemental information in the paper
-
 •	please cite the paper when using this code
-
 •	for questions regarding this code, please contact:
-
 	Dr. Jacob Kerssemakers (j.w.j.kerssemakers@tudelft.nl) or
-
 	Dr. Luuk Loeff (l.loeff@bioc.uzh.ch)
