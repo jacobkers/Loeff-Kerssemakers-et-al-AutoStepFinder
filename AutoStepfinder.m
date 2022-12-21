@@ -609,20 +609,24 @@ function cFitX=Adapt_cFit(f,idx,cFitX,X)
         %% This section contains code related to the multipass steps
  
       function full_split_log=expand_split_log(full_split_log,split_indices,fitround,best_shot)
-           %expand split log; remove double entries (when a residu of a
-           %step is found again, we label the location by its first
-           %round occurence)
-           LS=length(split_indices);
-           new_split_log=[split_indices 3*ones(LS,1)];
-           new_split_log(1:best_shot,2)=fitround;          
-               if fitround==1
-                    full_split_log=[full_split_log ; new_split_log];
-               else
-                    already_found=find(full_split_log(:,2)<3);  %steps already spotted
-                    new_found=find(~ismember(new_split_log(:,1),full_split_log(already_found,1)));                  
-                    full_split_log= [full_split_log(already_found,:);...
-                                     new_split_log(new_found,:)];
-               end
+        %expand split log; remove double entries (when a residu of a
+        %step is found again, we label the location by its first
+        %round occurence)
+        LS=length(split_indices);
+        new_split_log=[split_indices 3*ones(LS,1)];
+        new_split_log(1:best_shot,2)=fitround;
+        if fitround==1
+            full_split_log=[full_split_log ; new_split_log];
+        else
+            if ~isempty(full_split_log)
+                already_found=find(full_split_log(:,2)<3); %steps already spotted
+                new_found=find(~ismember(new_split_log(:,1),full_split_log(already_found,1)));
+                full_split_log= [full_split_log(already_found,:);...
+                new_split_log(new_found,:)];
+            else
+                full_split_log= [full_split_log;new_split_log];
+            end
+        end
                     
 function StepsX=AddStep_Errors(X,StepsX,initval)   
 %This function calculates step errors associated with the steps.
