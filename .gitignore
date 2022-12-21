@@ -23,5 +23,5 @@
 *.apk
 
 # other
-config_last_run.m
+config_last_run.mat
 
