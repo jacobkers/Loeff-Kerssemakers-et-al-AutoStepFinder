@@ -601,8 +601,8 @@ function cFitX=Adapt_cFit(f,idx,cFitX,X)
             ixlo=idxes(ii)+1;  %first index of plateau
             ixhi=idxes(ii+1);  %last index
             switch modus
-                case 'mean', FitX(ixlo:ixhi)=nanmean(X(ixlo:ixhi));
-                case 'median', FitX(ixlo:ixhi)=nanmedian(X(ixlo:ixhi));
+                case 'mean', FitX(ixlo:ixhi)=mean(X(ixlo:ixhi),'omitnan');
+                case 'median', FitX(ixlo:ixhi)=median(X(ixlo:ixhi),'omitnan');
             end
         end 
         
@@ -633,7 +633,7 @@ steperrorestimate='measured';
 
 if strcmp(steperrorestimate,'predicted')
     shft=2;
-    globalnoise=nanstd((X(shft:end)-X(1:end-shft+1)))/sqrt(2);
+    globalnoise=std((X(shft:end)-X(1:end-shft+1)),'omitnan')/sqrt(2);
 end
 
 [ls,col]=size(StepsX); i1=0;
@@ -883,8 +883,8 @@ while ratio<sigchange     %if not too much changes anymore; the higher this numb
     sigma_old=sigma;
     selc=find(flag==1);
     data(flag==1); 
-    av=nanmedian(data(selc));       %since we expect skewed distribution, we use the median iso the mea     
-    sigma=nanstd(data(selc));
+    av=median(data(selc), 'omitnan');       %since we expect skewed distribution, we use the median iso the mea     
+    sigma=std(data(selc),'omitnan');
     ratio=sigma/sigma_old;
     treshold=tolerance*sigma+av;
     switch how
@@ -1259,7 +1259,7 @@ noisecurve=zeros(max_range,1);
 for rg=1:max_range
     sqdif_sort=sort(difmap_sq(rg,:));
     sqdif_lo=sqdif_sort(1:round((1-crop_hi)*Cp));
-    noisecurve(rg)=(nanmean(sqdif_lo)).^0.5/(2^0.5);
+    noisecurve(rg)=(mean(sqdif_lo, 'omitnan')).^0.5/(2^0.5);
 end
 
 figure('Name','Noise_Estimator','NumberTitle','off','units', 'normalized', 'position', [0.57 0.1 0.40 0.15]); %[0.745 0.1 0.25 0.4])
