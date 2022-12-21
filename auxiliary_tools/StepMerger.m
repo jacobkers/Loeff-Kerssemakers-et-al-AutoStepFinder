@@ -74,8 +74,6 @@ else
     init.bootstraprepeats=0;
 end
 
-
-
 %run_modus='demo'; 'quickload'; 
 %run_modus='quickload';
 run_modus='default';

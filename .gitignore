@@ -1,0 +1,27 @@
+# Project docs
+*.ppt*
+*.doc*
+*.xls*
+*.pdf
+
+#test data input/outputs
+*.asv
+*.mat
+*.zip
+*.tif
+*.tiff
+*.jpeg
+*.jpg
+*.svg
+*.txt
+
+
+# Executables
+*.swf
+*.air
+*.ipa
+*.apk
+
+# other
+config_last_run.m
+
