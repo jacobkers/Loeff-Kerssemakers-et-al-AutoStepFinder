@@ -16,6 +16,7 @@
 *.txt
 
 
+
 # Executables
 *.swf
 *.air
@@ -24,4 +25,4 @@
 
 # other
 config_last_run.mat
-
+*StepFit_Result*
