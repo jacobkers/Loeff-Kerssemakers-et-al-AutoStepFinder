@@ -16,16 +16,25 @@ HIGHLIGHTS
 •	Fast, automated, and bias-free detection of steps within single-molecule trajectories.
 •	Robust step detection without any prior knowledge on the data.
 •	A dual-pass strategy for the detection of steps over a wide variety of scales.
-•	A user-friendly interface for a simplified step fitting procedure.
+•	[Matlab] a user-friendly interface for a simplified step fitting procedure
+•	[Python] a command-line style development version in freely available Python (post-publication)
 
-REPOSITORY CONTENTS
+
+REPOSITORY CONTENTS [Matlab]
 •	code to analyze steps: 'AutoStepFinder'
 •	code for cleaning data from corrupted points (such as Inf): 'DataDuster'
 •	code for generating test traces : 'StepMaker'
-•	zip file containing test traces
+•	test traces (multi and single column .txt)
+
+REPOSITORY CONTENTS [Python]
+•	code to analyze steps: 'AutoSteppyfinder'
+•	test traces (single column .txt)
 
 FOR USERS
-•	an elaborate manual is included with Supplemental information in the paper
+•	an elaborate manual is included with Supplemental information in the paper [written for Matlab version]
+•	for further details, see sub-repository README's
+•	disclaimer: Whileas code is continously tested and developed,small bugs may still occur. 
+	Feed back is appreciated via Github 
 •	please cite the paper when using this code
 •	for questions regarding this code, please contact:
 	Dr. Jacob Kerssemakers (j.w.j.kerssemakers@tudelft.nl) or
