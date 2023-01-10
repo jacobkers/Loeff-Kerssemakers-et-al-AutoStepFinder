@@ -13,7 +13,18 @@
 *.jpeg
 *.jpg
 *.svg
-# .txt
+*.txt
+simstep*
+*/testdata/*
+
+
+*.mat
+*.zip
+*.jpeg
+*.jpg
+*.bmp
+*.png
+
 
 
 

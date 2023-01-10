@@ -105,7 +105,7 @@ def multiPass(demo=1.0, tresH=0.15, N_iter=100):
         sio.SavePlot(workPath, inoutName, dataX, Fits, S_curves, best_shots, steptable, demo)
 
 # run -----------------------------------------
-multiPass(demo=2.1, tresH=0.15, N_iter=1000)
+multiPass(demo=0.1, tresH=0.15, N_iter=1000)
 """ # run options
 * demo number sets the different modii: 
 # first digit

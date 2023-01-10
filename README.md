@@ -16,8 +16,8 @@ HIGHLIGHTS
 •	Fast, automated, and bias-free detection of steps within single-molecule trajectories.
 •	Robust step detection without any prior knowledge on the data.
 •	A dual-pass strategy for the detection of steps over a wide variety of scales.
-•	[Matlab] a user-friendly interface for a simplified step fitting procedure
-•	[Python] a command-line style development version in freely available Python (post-publication)
+•	[Matlab:] a user-friendly interface for a simplified step fitting procedure
+•	[Python:] a command-line style development version in freely available Python (post-publication)
 
 
 REPOSITORY CONTENTS [Matlab]
