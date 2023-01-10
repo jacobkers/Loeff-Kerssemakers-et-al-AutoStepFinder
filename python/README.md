@@ -26,6 +26,7 @@ Code is in early development and may still contain small bugs. Code may be subje
 
 
 # run options
+* open AutoSteppyfinder, last line: multiPass(demo=0.1, tresH=0.15, N_iter=0) 
 * demo number sets the different modii: 
 	- first digit
 	0 create a simple trace; 
@@ -52,7 +53,7 @@ Code is in early development and may still contain small bugs. Code may be subje
      ... with max. 100 iterations per fit
      ... and save both the step table and a .png fit picture to a 'result' directory 
 
-## Refs:
+## references:
 [1] AutoStepfinder: A fast and automated step detection method for single-molecule analysis
 Luuk Loef
 f, Jacob W J Kerssemakers, Chirlmin Joo, Cees Dekker
