@@ -56,26 +56,26 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-
 # custom
-import A12_stepfindCore as core
-import A13_stepfindInOut as sio
-import B1_stepfindTools as st
+import stepfindCore as core
+import stepfindInOut as sio
+import stepfindTools as st
 
 """This section contains the 'core' loop of the stepfinder:
 a single full iteration is done and a best fit is determined
 @author: jkerssemakers march 2022       
 """
 
+
 def multiPass(demo=1.0, tresH=0.15, N_iter=100):
     """This is the main, multi-pass loop of the autostepfinder
     @author: jkerssemakers march 2022"""
-    #get worklist
+    # get worklist
     workPath, workList = sio.getWorklist(demo)
 
     # 2 run through worklist:
     fL = len(workList)
-    S_curves=[]
+    S_curves = []
     for fi in range(0, fL, 1):
         if workList[0] == "nofile.txt":
             dataX, inoutName = sio.SimulateData(N_st=20)
@@ -84,25 +84,30 @@ def multiPass(demo=1.0, tresH=0.15, N_iter=100):
             dataX, inoutName = sio.LoadData(workPath, fileName)
         FitX = 0 * dataX
         print("working on:" + inoutName)
-        #multipass:
+        # multipass:
         for ii in range(0, 3, 1):
-            #work remaining part of data:
-            residuX=dataX - FitX
-            newFitX, _, _, S_curve, best_shot = core.A12_stepfindcore(residuX, demo, tresH, N_iter)
+            # work remaining part of data:
+            residuX = dataX - FitX
+            newFitX, _, _, S_curve, best_shot = core.stepfindcore(
+                residuX, demo, tresH, N_iter
+            )
             FitX = st.AppendFitX(newFitX, FitX, dataX)
-            #storage for plotting:
+            # storage for plotting:
             if ii == 0:
-                Fits=np.copy(FitX)
+                Fits = np.copy(FitX)
                 S_curves = np.copy(S_curve)
-                best_shots=[best_shot]
-            elif (best_shot>0):           
+                best_shots = [best_shot]
+            elif best_shot > 0:
                 Fits = np.vstack([Fits, FitX])
                 S_curves = np.vstack([S_curves, S_curve])
-                best_shots=np.hstack([best_shots, best_shot])
+                best_shots = np.hstack([best_shots, best_shot])
 
-        #steps from final fit:
+        # steps from final fit:
         steptable = st.Fit2Steps(dataX, FitX)
-        sio.SavePlot(workPath, inoutName, dataX, Fits, S_curves, best_shots, steptable, demo)
+        sio.SavePlot(
+            workPath, inoutName, dataX, Fits, S_curves, best_shots, steptable, demo
+        )
+
 
 # run -----------------------------------------
 multiPass(demo=0.1, tresH=0.15, N_iter=1000)
