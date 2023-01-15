@@ -11,12 +11,12 @@ import numpy as np
 def splitFast(segment, demo=0):
     """
     Determines the best step-fit in a one-dim array 'segment'.
-    To save time, use of functions like 'mean' are avoided in the deep loop
-    If the result is invalid, this is passed 
+    To save time, use of function 'mean' is avoided in the deep loop
+    If the result is invalid, this is passed via 'rank' value=0
     Jacob Kers 2021
     """
-    invalidFit=0
-    Nmin=2
+    invalidFit = 0
+    Nmin = 2
     Ns = len(segment)
     if Ns > 2:
         var_q = np.ones(
@@ -45,8 +45,8 @@ def splitFast(segment, demo=0):
             var_q[ii] = -delta_q
         # wrapping up:
         idx = np.argmin(var_q)
-        if (idx<Nmin-1) | (Ns-idx<Nmin-1):
-            invalidFit=1
+        if (idx < Nmin - 1) | (Ns - idx < Nmin - 1):
+            invalidFit = 1
         else:
             avl_fin = np.mean(segment[0:idx])
             avr_fin = np.mean(segment[idx + 1 : Ns + 1])
@@ -70,7 +70,7 @@ def splitFast(segment, demo=0):
                 input("Press Enter to continue...")
                 plt.close()
     else:
-        invalidFit=1
+        invalidFit = 1
     if invalidFit:
         idx = 0
         avl_fin = segment[0]
@@ -134,7 +134,7 @@ def Fit2Steps(dataX, FitX):
         )
         # error based on local VAR,+/-95%:
         rms_pre = np.std(dataX[ix_pre + 1 : ix])
-        rms_aft = np.std(dataX[ix + 1 : ix_aft+1])
+        rms_aft = np.std(dataX[ix + 1 : ix_aft + 1])
         error_meas = (
             2
             * ((rms_pre**2 / dwell_pre + rms_aft**2 / dwell_aft) ** 0.5)
@@ -161,30 +161,31 @@ def hatCurve(N=100, edz=4):
 
     return hat
 
-def AppendFitX(newFitX, FitX,dataX):
-    """ combine different fit rounds 
+
+def AppendFitX(newFitX, FitX, dataX):
+    """combine different fit rounds
     includes check for too closely spaced indices from differend rounds
-    """   
+    """
     # get step locations:
-    combiFitX= FitX + newFitX
-    Lx = len(combiFitX)   
-    ixes0 = np.ndarray.flatten(np.argwhere(np.diff(combiFitX) != 0))   
+    combiFitX = FitX + newFitX
+    Lx = len(combiFitX)
+    ixes0 = np.ndarray.flatten(np.argwhere(np.diff(combiFitX) != 0))
     if len(ixes0) > 0:
         # pad with start and end
         Lix = len(ixes0)
         ixes = np.hstack([[-1], ixes0, [Lx]])
         # find indices too close together:
-        Nmin=2
-        whereblips=np.argwhere(np.diff(ixes) < Nmin)
+        Nmin = 2
+        whereblips = np.argwhere(np.diff(ixes) < Nmin)
         # redo a stepfit over this part to pick just one step location:
         for ix in whereblips:
-            lo=ix[0]-1
-            ixlo=ixes[lo]
-            ixhi=ixes[lo+3]
-            segment=dataX[ixlo+1:ixhi] 
-            idx, avl, avr, rankit, errorcurve=splitFast(segment)
-            combiFitX_old=np.copy(combiFitX)
-            combiFitX[ixlo+1:ixlo+idx+2]=avl
-            combiFitX[ixlo+idx+2:ixhi+1]=avr
-    dum=1
+            lo = ix[0] - 1
+            ixlo = ixes[lo]
+            ixhi = ixes[lo + 3]
+            segment = dataX[ixlo + 1 : ixhi]
+            idx, avl, avr, rankit, errorcurve = splitFast(segment)
+            combiFitX_old = np.copy(combiFitX)
+            combiFitX[ixlo + 1 : ixlo + idx + 2] = avl
+            combiFitX[ixlo + idx + 2 : ixhi + 1] = avr
+    dum = 1
     return combiFitX

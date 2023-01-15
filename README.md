@@ -19,7 +19,8 @@ HIGHLIGHTS
 •	[Matlab:] a user-friendly interface for a simplified step fitting procedure
 •	[Python:] a command-line style development version in freely available Python (post-publication)
 
-NEWS • Python: a simplified Python version (post-publication) was added as a development version (pre-release January 2023)
+NEWS
+•	Python: a simplified Python version (post-publication) was added as a development version (pre-release January 2023)	
 
 REPOSITORY CONTENTS [Matlab]
 •	code to analyze steps: 'AutoStepFinder'
