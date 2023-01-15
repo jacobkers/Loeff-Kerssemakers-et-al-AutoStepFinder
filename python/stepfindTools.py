@@ -11,8 +11,8 @@ import numpy as np
 def splitFast(segment, demo=0):
     """
     Determines the best step-fit in a one-dim array 'segment'.
-    To save time, use of functions like 'mean' are avoided in the deep loop
-    If the result is invalid, this is passed
+    To save time, use of function 'mean' is avoided in the deep loop
+    If the result is invalid, this is passed via 'rank' value=0
     Jacob Kers 2021
     """
     invalidFit = 0

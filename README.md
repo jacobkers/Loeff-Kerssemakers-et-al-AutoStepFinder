@@ -26,6 +26,9 @@ REPOSITORY CONTENTS [Matlab]
 •	code for generating test traces : 'StepMaker'
 •	test traces (multi and single column .txt)
 
+NEWS
+•	Python: a simplified Python version (post-publication) was added as a development version (pre-release January 2023)	
+
 REPOSITORY CONTENTS [Python]
 •	code to analyze steps: 'AutoSteppyfinder'
 •	test traces (single column .txt)

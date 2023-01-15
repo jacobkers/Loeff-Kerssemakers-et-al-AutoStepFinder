@@ -2,7 +2,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import stepfindTools as st
-import warnings
 
 
 def stepfindcore(dataX=1, demo=0, tresH=0.15, N_iter=0):

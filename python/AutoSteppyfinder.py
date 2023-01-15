@@ -10,6 +10,8 @@ Description: simplified python transcript of matlabcode from [1] to detect steps
 #inputs: 
 single-column DataX
 
+## run: multiPass(demo, tresH, N_iter) 
+
 ## run options
 * demo number sets the different modii: 
 # first digit
@@ -29,7 +31,7 @@ note: .2-.4 are suppressed in batch mode
 * iteration_range (to run at max=tracelenth/4, set to 0)
 
 ## example: 
-   A1_stepfind_multipass(demo=2.1, tresH=0.15, N_iter=100) 
+   multiPass(demo=2.1, tresH=0.15, N_iter=100) 
     will run:
      -batch-style fit on a user-chosen directory with txt files, 
      ... with a fit round acceptance of 0.15
@@ -54,7 +56,6 @@ doi: 10.1038/nature04928.
 ## Libraries
 import matplotlib.pyplot as plt
 import numpy as np
-
 
 # custom
 import stepfindCore as core
