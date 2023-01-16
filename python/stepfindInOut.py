@@ -81,34 +81,33 @@ def SavePlot(workPath, inoutName, dataX, Fits, S_curves, best_shots, steptable, 
             step_row = steptable[sti]
             writer.writerow(step_row)
             # show final result
-    if demo - np.floor(demo) >= 0.1:   
+    if demo - np.floor(demo) >= 0.1:
         fig, (ax1, ax2) = plt.subplots(1, 2)
         ax1.plot(dataX)
-        ax1.plot(np.transpose(Fits))    
+        ax1.plot(np.transpose(Fits))
         ax1.set_title("intermediate & final result")
         ax1.set_xlabel("time, a.u.")
         ax1.set_ylabel("position")
         ax1.set_box_aspect(0.5)
-        ax2.plot(0*S_curves[0])
+        ax2.plot(0 * S_curves[0])
         ax2.plot(np.transpose(S_curves))
-        if len(best_shots)==1:
-             ax2.plot(best_shots[0] - 1, S_curves[best_shots[0] - 1], "ro")
+        if len(best_shots) == 1:
+            ax2.plot(best_shots[0] - 1, S_curves[best_shots[0] - 1], "ro")
         else:
             for ii in range(len(best_shots)):
-                ax2.plot(best_shots[ii] - 1, S_curves[ii,best_shots[ii] - 1], "ro")
+                ax2.plot(best_shots[ii] - 1, S_curves[ii, best_shots[ii] - 1], "ro")
         ax2.set_title("S-curve evaluation")
         ax2.set_xlabel("no. of steps in fit")
         ax2.set_ylabel("S-value, a.u.")
         ax2.set_box_aspect(0.7)
         plt.show(block=False)
         png_nm = outPath + inoutName + str("_fit") + str(".png")
-        fig.savefig(png_nm, dpi=500)       
+        fig.savefig(png_nm, dpi=500)
         if demo < 1.5:  # if not in batch mode
             input("Press Enter to continue...")
         else:
             plt.pause(0.1)
         plt.close()
-
 
 
 def SimulateData(N_st, demo=0):
@@ -170,7 +169,7 @@ def SimulateData(N_st, demo=0):
             blockwave = build_blockwave(Nw)
             new_segment = new_segment + blockwave
             segment = np.concatenate((segment, new_segment), axis=None)
-            #use to go down:
+            # use to go down:
             flipsign = flipsign
 
     return segment, inoutName

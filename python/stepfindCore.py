@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 import matplotlib.pyplot as plt
 import numpy as np
-import B1_stepfindTools as st
-import warnings
+import stepfindTools as st
 
-def A12_stepfindcore(dataX=1, demo=0, tresH=0.15, N_iter=0):
+
+def stepfindcore(dataX=1, demo=0, tresH=0.15, N_iter=0):
 
     # run an iterative step fit deep into overfitting:
     if N_iter == 0 or N_iter > int(len(dataX) / 4):
@@ -40,7 +40,7 @@ def A12_stepfindcore(dataX=1, demo=0, tresH=0.15, N_iter=0):
         FitX = 0 * dataX
         cFitX = 0 * dataX
         best_shot = 0
-        
+
     return FitX, cFitX, splitlog, S_curve_fin, best_shot
 
 
@@ -80,19 +80,19 @@ def A121_split_until_ready(dataX=1, N_iter=50, demo=0):
     c = 0
     for ii in range(1, N_iter + 1, 1):
         # for row entries of valid-to-fit segments:
-        #check validity
-        # properties from split table: 
+        # check validity
+        # properties from split table:
         segment_lengths = np.ndarray.flatten(split_table[:, 1] - split_table[:, 0]) + 1
         rankings = np.ndarray.flatten(split_table[:, 5])
-        
+
         # valid indices (expand the condition):
         ix_valids = np.argwhere((segment_lengths > 2) & (rankings > 0))
 
-        if ix_valids.size>0:
+        if ix_valids.size > 0:
             # if any left, find the one best to split next:
-            #if not, stop
+            # if not, stop
             subsel_idx = np.argmax(rankings[ix_valids])
-            
+
             best_row_idx = int(ix_valids[subsel_idx])
             best_row_entry = np.ndarray.flatten(split_table[best_row_idx, :])
 
@@ -116,7 +116,9 @@ def A121_split_until_ready(dataX=1, N_iter=50, demo=0):
             # #includes correction for different degrees of freedom Fit & CFit
             corF = c / (c + 1)
             corF = 1
-            S_curve[c] = corF * np.mean((dataX - cFitX) ** 2) / np.mean((dataX - FitX) ** 2)
+            S_curve[c] = (
+                corF * np.mean((dataX - cFitX) ** 2) / np.mean((dataX - FitX) ** 2)
+            )
             c = c + 1
 
             # 3rth level diagnosis
@@ -154,9 +156,9 @@ def A1210_set_up_splitlogtable(dataX):
 
 def A1211_adapt_fit(FitX, split_table, idx):
     """adapt the fit trace using split table"""
-    #is it valid to split?
-    rank=split_table[idx, 5]
-    ok2adapt=(rank)>0
+    # is it valid to split?
+    rank = split_table[idx, 5]
+    ok2adapt = (rank) > 0
     if ok2adapt:
         # indices:
         leftplateau_istart = int(split_table[idx, 0])
@@ -173,9 +175,9 @@ def A1211_adapt_fit(FitX, split_table, idx):
 
 def A1213_adapt_counterfit(cFitX, dataX, split_table, idx):
     """adapt the counterfit trace for three new plateaus using four adjacent split table entries"""
-    #check if middle two segments have valid entries:
-    rankings=split_table[idx:idx+2:, 5] 
-    ok2adapt=all(rankings)
+    # check if middle two segments have valid entries:
+    rankings = split_table[idx : idx + 2 :, 5]
+    ok2adapt = all(rankings)
     if ok2adapt:
         # indices for three segments:
         leftplateau_istart = int(split_table[idx - 1, 2]) + 1
@@ -283,5 +285,3 @@ def Splitlog2FinalIndices(splitlog, best_shot):
         np.ndarray.flatten(indices_counterfit_all[np.argwhere(is_it_used == 0)])
     )
     return indices_bestfit, indices_counterfit
-
-
