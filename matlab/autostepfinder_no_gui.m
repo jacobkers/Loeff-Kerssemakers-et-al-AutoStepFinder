@@ -12,55 +12,49 @@
  %This is the main, multi-pass loop of the autostepfinder
 if nargin<1
   %% Parameters (& default value)    
-    initval.datapath        = get(handles.data_path, 'string');         %Data path    
+    initval.datapath        = pwd;          %Data path    
     initval.codefolder      = pwd;    
-    initval.GlobalErrorAccept=0.1;                                      %User value for accepting a split or merge round solution
-    
-    initval.SMaxTreshold    = str2double(get(handles.SMaxTreshold,...   %Threshold for second round of fitting
-                              'string')); 
-    initval.overshoot       = 1 ;                                        %Increase of decrease the number to-be-fitted steps relative to the determined optimum.      
-    initval.fitrange        = str2double(get(handles.fitrange,...       %Number of steps to be fitted
-                              'string'));       
-    initval.stepnumber      = initval.fitrange;                         %Iteration range of the measurement
+    initval.GlobalErrorAccept=0.1;           %User value for accepting a split or merge round solution   
+    initval.SMaxTreshold    = 0.15; 
+    initval.overshoot       = 1 ;            %Increase of decrease the number to-be-fitted steps relative to the determined optimum.      
+    initval.fitrange        = 1000;       
+    initval.stepnumber      = initval.fitrange;    %Iteration range of the measurement
     initval.nextfile        = 1;                                
-    initval.resolution      = str2double(get(handles.res_mes,...        %Resolution of measurement
-                              'string'));      
-    initval.meanbase        = str2double(get(handles.meanbase,...       %Mean value of the base line
-                              'string'));
-    initval.max_range       = str2double(get(handles.noisemaxdist,...   %Max range for noise estimation
-                              'string'));
-    initval.userplt         = get(handles.userplton,'Value');           %Turn user plot function on/ off
-    initval.scurve_eval     = get(handles.scurveeval,'Value');          %Turn S-curve evaluation on/ off
-    initval.fitmean         = get(handles.fitmean,'Value');             %Use mean for fitting
-    initval.fitmedian       = get(handles.fitmedian,'Value');           %Use median for fitting
-    initval.treshonoff      = get(handles.basetreshon,'Value');         %Turn base line treshholding on/ off
-    initval.txtoutput       = get(handles.txtoutput,'Value');           %Output .txt files
-    initval.matoutput       = get(handles.matoutput,'Value');           %Output .mat files
+    initval.resolution      = 1;       %Resolution of measurement
+    initval.meanbase        = 0;      %Mean value of the base line
+    initval.max_range       = 40; %Max range for noise estimation   
+    initval.userplt         = 0;           %Turn user plot function on/ off
+    initval.scurve_eval     = 0;          %Turn S-curve evaluation on/ off
+    initval.fitmean         = 1;             %Use mean for fitting
+    initval.fitmedian       = 0;           %Use median for fitting
+    initval.treshonoff      = 0;         %Turn base line treshholding on/ off
+    initval.txtoutput       = 1;           %Output .txt files
+    initval.matoutput       = 0;           %Output .mat files
     initval.setsteps        = str2double(get(handles.manualmodesteps,...%Resolution of measurement
                               'string'));
-    initval.parametersout   = get(handles.parametersout,'Value');       %Save parameters output file.
-    initval.fitsoutput      = get(handles.fitsoutput,'Value');          %Save fits output file.
-    initval.propoutput      = get(handles.propoutput,'Value');          %Save properties output file.
-    initval.scurvesoutput   = get(handles.scurvesoutput,'Value');       %Save S-curves output file.
-    initval.manualoff       = get(handles.manualoff,'Value');           %Manual mode off
-    initval.manualon        = get(handles.manualon,'Value');            %Manual mode on
-    initval.estimatenoise   = get(handles.noiseeston, 'Value');         %Noise estimation on
+    initval.parametersout   = 1;       %Save parameters output file.
+    initval.fitsoutput      = 1;          %Save fits output file.
+    initval.propoutput      = 1;          %Save properties output file.
+    initval.scurvesoutput   = 1;       %Save S-curves output file.
+    initval.manualoff       = 1;           %Manual mode off
+    initval.manualon        = 0;            %Manual mode on
+    initval.estimatenoise   = 0;         %Noise estimation on
     if initval.treshonoff   == 1
       initval.basetresh     = initval.meanbase;                         %Treshhold the mean of your base line
     else
       initval.basetresh     = -100000;
     end
     
-    initval.booton   = get(handles.booton, 'Value');         %Noise estimation on
+    initval.booton   = 0;         %Noise estimation on
     if initval.booton   == 1
     initval.bootstraprepeats=1000;                           %Add bootstrap erorrs per step
     else
     initval.bootstraprepeats=0;
     end
-    initval.singlerun       = get(handles.singrun,'Value');             %Single or batch run
+    initval.singlerun       = 1;             %Single or batch run
     if initval.singlerun    == 1
       initval.hand_load     =  1;                                       %Single Run
-      initval.rerun         =  get(handles.rerun,'Value');
+      initval.rerun         =  0;
       if initval.rerun      == 1
          initval.hand_load =  0;
       end
@@ -69,7 +63,6 @@ if nargin<1
       initval.datapath      = uigetdir(initval.datapath);               %Get directory for batch analysis
     end    
 end
- 
  
  while initval.nextfile>0 
     [Data,SaveName,initval]=Get_Data(initval, handles);
