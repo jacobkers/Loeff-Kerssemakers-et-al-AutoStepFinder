@@ -122,7 +122,6 @@ end
  end
 
 
-
 %% This section contains the 'Core' function of the stepfinder; 
 %it can be cut and autorun independently (on a simple simulated curve) for demo purposes
 
@@ -1018,12 +1017,10 @@ figure('Name','Noise_Estimator','NumberTitle','off','units', 'normalized', 'posi
     hold off;
 end
 
-    function User_Plot_Result(~,~,~,FinalSteps,~,initval)
+function User_Plot_Result(~,~,~,FinalSteps,~,initval)
 %This function can be used to present user (and experiment-specific plots
 %using the standard stepfinder output
-
 idx_steps= FinalSteps(:,4)> initval.basetresh; % Threshholding of steps.
-
 LevelBefore    =  FinalSteps(idx_steps,3); %Level before step
 LevelAfter     =  FinalSteps(idx_steps,4); %Level after step
 StepSize       =  LevelAfter - LevelBefore; %Size of step
@@ -1039,20 +1036,6 @@ StepSize       =  LevelAfter - LevelBefore; %Size of step
 % ---------------------------------------------   
 
 figure('Name','User plots','NumberTitle','off','units', 'normalized', 'position', [0.05 0.1 0.45 0.15]);
-% %%  Transition Density Plot
-%     DensityPlt = subplot(2,1,1);
-%     cla(DensityPlt);
-%     DensityBinsize = 0.02;
-%     Xaxis=0:DensityBinsize:1;
-%     Yaxis=0:DensityBinsize:1;
-%     BinC={(Xaxis+(0.5*DensityBinsize)),((Yaxis+0.5*DensityBinsize))};
-%     values = hist3([LevelAfter(:), LevelBefore(:)],'Ctrs',BinC);
-%     contour(Xaxis,Yaxis,values);
-%     colorbar;
-%     title('Transition Density Plot');
-%     xlabel('Level Before');
-%     ylabel('Level After');
-
 %Step-Level
     StepLPlt = subplot(1,2,1);
     cla(StepLPlt);
@@ -1079,72 +1062,6 @@ figure('Name','User plots','NumberTitle','off','units', 'normalized', 'position'
     ylimstep=round(max(histcounts*1.1));
     xlimstep=round(max(StepSize*1.1));
     xminstep=round(min(StepSize*0.9));
-    %ylim([0 ylimstep]);
-    %xlim([xminstep xlimstep]);
-    
 
 
-% --- Executes on button press in rerun.
-function rerun_Callback(~, ~, handles)
-set(handles.rerun,'value',1);
-AutoStepFinder(handles)
-
-
-
-
-function noisemaxdist_Callback(hObject, ~, ~)
-checkmax_range=get(hObject,'String');
-checkmax_rangenan=isnan(str2double(checkmax_range));
-     if checkmax_rangenan==1
-         msgbox('The time range for noise estimation is NaN.','ERROR', 'error')
-     return;
-     end
-     checkmax_rangenum=str2num(checkmax_range);
-if checkmax_rangenum < 1
-         msgbox('The time range for noise estimation is smaller than 1. The input value has been set to 1','ERROR', 'error')
-         set(hObject,'String',1);
-     return;     
-end 
- 
-
-% --- Executes on button press in basetreshon.
-function basetreshon_Callback(~, ~, handles)
-set(handles.basetreshoff,'Value',0);
-set(handles.basetreshon,'Value',1)
-set(handles.meanbase, 'Enable','On');
-
-
-% --- Executes on button press in basetreshoff.
-function basetreshoff_Callback(~, ~, handles)
-set(handles.basetreshon,'Value',0);
-set(handles.basetreshoff,'Value',1)
-    set(handles.meanbase, 'Enable','Off');   
-    MeanBase = 0;
-    set(handles.meanbase, 'String', MeanBase);
-
-
-% --- Executes on button press in noiseestoff.
-function noiseestoff_Callback(~, ~, handles)
-    set(handles.noiseeston, 'value', 0)
-    set(handles.noiseestoff, 'value', 1)
-    set(handles.noisemaxdist,'Enable','Off');
-
-
-% --- Executes on button press in noiseeston.
-function noiseeston_Callback(~, ~, handles)
-set(handles.noiseestoff, 'value', 0)
-set(handles.noiseeston, 'value', 1)
-set(handles.noisemaxdist,'Enable','On');
-
-
-% --- Executes on button press in batchrun.
-function batchrun_Callback(~, ~, handles)
-set(handles.singrun, 'value', 0)
-set(handles.batchrun, 'value', 1)
-
-
-% --- Executes on button press in singrun.
-function singrun_Callback(~, ~, handles)
-set(handles.singrun, 'value', 1)
-set(handles.batchrun, 'value', 0)
 
