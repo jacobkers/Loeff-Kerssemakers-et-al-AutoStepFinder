@@ -9,9 +9,6 @@ Luuk Loeff[1,2,3], Jacob W. J. Kerssemakers[1,3], Chirlmin Joo1 [4], Cees Dekker
 3 Equal contribution
 4 Correspondence: C.Joo@tudelft.nl (CJ), C.Dekker@tudelft.nl (CD)
 
-SUMMARY
-Single-molecule techniques allow the visualization of the molecular dynamics of nucleic acids and proteins with high spatio-temporal resolution, for example a motor protein stepping along DNA. Valuable kinetic information of biomolecules can be obtained when the discrete states within single-molecule time trajectories are determined. Here we present a fast, automated, and bias-free step-detection method, AutoStepfinder, that we developed to determine steps in large datasets without requiring prior knowledge on the noise contributions, distribution, and location of steps. The analysis is based on a series of partition events that minimize the difference between the data and the fit. A dual-pass strategy determines the optimal fit and allows AutoStepfinder to detect steps of a wide variety of sizes. We demonstrate successful step detection for a broad variety of experimental traces. The user-friendly interface and the automated detection of AutoStepfinder provides a robust analysis procedure that enables anyone without programming knowledge to generate step fits and informative plots in less than an hour. 
-
 HIGHLIGHTS
 •	Fast, automated, and bias-free detection of steps within single-molecule trajectories.
 •	Robust step detection without any prior knowledge on the data.
@@ -22,6 +19,10 @@ HIGHLIGHTS
 NEWS for release V2.0
 • Matlab: a few bugs reported by users were solved
 • Python: a simplified Python version (post-publication) was added as a development version (pre-release January 2023)
+
+SUMMARY
+Single-molecule techniques allow the visualization of the molecular dynamics of nucleic acids and proteins with high spatio-temporal resolution, for example a motor protein stepping along DNA. Valuable kinetic information of biomolecules can be obtained when the discrete states within single-molecule time trajectories are determined. Here we present a fast, automated, and bias-free step-detection method, AutoStepfinder, that we developed to determine steps in large datasets without requiring prior knowledge on the noise contributions, distribution, and location of steps. The analysis is based on a series of partition events that minimize the difference between the data and the fit. A dual-pass strategy determines the optimal fit and allows AutoStepfinder to detect steps of a wide variety of sizes. We demonstrate successful step detection for a broad variety of experimental traces. The user-friendly interface and the automated detection of AutoStepfinder provides a robust analysis procedure that enables anyone without programming knowledge to generate step fits and informative plots in less than an hour. 
+
 
 REPOSITORY CONTENTS [Matlab]
 •	code to analyze steps: 'AutoStepFinder'
