@@ -14,7 +14,7 @@ function autostepfinder_no_gui(initval,Data, SaveName)
 %little as possible
 
 if nargin<3
-  %% Parameters (& default value)
+  % Parameters (& default value)
      %% run settings
     initval.singlerun       = 1;        %Single or batch run
     if initval.singlerun    == 1
@@ -26,8 +26,7 @@ if nargin<3
     else    
       initval.hand_load     =  2;       %Batch Run
       initval.datapath      = uigetdir(initval.datapath);   %Get directory for batch analysis
-    end 
-    initval.nextfile=0;
+    end    
       
     %% paths
     initval.datapath        = pwd;          %starting data path    
@@ -46,13 +45,16 @@ if nargin<3
     
     %% post processing and various
     initval.stepnumber      = initval.fitrange;    %Iteration range of the measurement
-    initval.nextfile        = 1;                                
+    initval.nextfile        = 0;                                
     initval.resolution      = 1;        %Resolution of measurement
     initval.meanbase        = 0;        %Mean value of the base line
-    initval.max_range       = 40;       %Max range for noise estimation   
-    initval.userplt         = 0;        %Turn user plot function on/ off
-    initval.scurve_eval     = 0;        %Turn S-curve evaluation on/ off     
+    initval.max_range       = 40;       %Max range for noise estimation       
     initval.basetresh     = -1E20;      %base line treshhold level (set -1E20 to turn off)
+    
+    %% show result for diagnosis
+    initval.show_fitplot =      1;
+    initval.show_userplot =     1;       
+    initval.show_scurve_plot  = 1;      
     
     %% saving formats
     initval.txtoutput       = 1;        %Output .txt files
@@ -60,12 +62,11 @@ if nargin<3
     initval.parametersout   = 1;        %Save parameters output file.
     initval.fitsoutput      = 1;        %Save fits output file.
     initval.propoutput      = 1;        %Save properties output file.
-    initval.scurvesoutput   = 1;        %Save S-curves output file.
-    
+    initval.scurvesoutput   = 1;        %Save S-curves output file.   
    
     %% noise and step error handling
     initval.estimatenoise   = 0;        %data noise estimation on
-    initval.bootstraprepeats=0;     % %bootstrap eror cycles per step (0=off) 
+    initval.bootstraprepeats=0;     % %bootstrap eror cycles per step (0=off)
 end
 
      if nargin < 3
@@ -867,34 +868,34 @@ disp('Saving Files...')
         close(findobj('type','figure','name','User plots'));                %close user plots --> for batch mode
         close(findobj('type','figure','name','Noise_Estimator'));                %close noise plots --> for batch mode
         cla;                                                                %clear axes 
-
-        plot(Time,Data,...                                                  %Plot Data
-        'LineWidth',2,....                                                  %Linewidth
-        'Color',[0,0.2,1]);                                                 %Color line RBG
-        hold on
-        plot(Time,FinalFit,...                                              %Plot Fit
-        'LineWidth',1.5,....                                                  %Linewidth
-        'Color',[1,0.7,0]);                                                 %Color line RBG
-        initval.MaxX=Time(end);                                             %Determine length X axis
-        initval.MaxY=max(Data)*1.2;                                         %Determine length Y axis
-        initval.MinY=min(Data);                                         %Determine length Y axis
-        xlim([0 initval.MaxX]);                                             %Set X axis
-        ylim([initval.MinY initval.MaxY]);                                             %Set Y axis
-        xlabel('Time (s)','FontSize',12);                                   %Label X axis
-        ylabel('Position (A.U.)','FontSize',12);                            %Label Y axis
-        set(gca,'TickDir','out','TickLength',[0.003 0.0035],'box', 'off');  %Set ticks outslide plotting area, remove box plot
-        initval.LegPlt=legend('Data','Fit');                                %Set labels legend
-        set(initval.LegPlt,'box', 'Off','Orientation','Horizontal');        %Remove box legend, align horizontal
-        if initval.basetresh > -1E20                                          %If baseline tresholding is on plot line
-            initval.BaseLine=repmat(initval.basetresh,1,length(Time));      %Generate array filled with baseline value
+        if initval.show_fitplot
+            plot(Time,Data,...                                                  %Plot Data
+            'LineWidth',2,....                                                  %Linewidth
+            'Color',[0,0.2,1]);                                                 %Color line RBG
             hold on
-            plot(Time,initval.BaseLine,...                                  %Plot treshold line                                              
-            'LineWidth',2,...
-            'Color',[1,0,0]); 
-            initval.LegPlt=legend('Data','Fit','Treshold');                             %Update labels legend
-            set(initval.LegPlt,'box', 'Off','Orientation','Horizontal');                %Remove box legend, align horizontal
+            plot(Time,FinalFit,...                                              %Plot Fit
+            'LineWidth',1.5,....                                                  %Linewidth
+            'Color',[1,0.7,0]);                                                 %Color line RBG
+            initval.MaxX=Time(end);                                             %Determine length X axis
+            initval.MaxY=max(Data)*1.2;                                         %Determine length Y axis
+            initval.MinY=min(Data);                                         %Determine length Y axis
+            xlim([0 initval.MaxX]);                                             %Set X axis
+            ylim([initval.MinY initval.MaxY]);                                             %Set Y axis
+            xlabel('Time (s)','FontSize',12);                                   %Label X axis
+            ylabel('Position (A.U.)','FontSize',12);                            %Label Y axis
+            set(gca,'TickDir','out','TickLength',[0.003 0.0035],'box', 'off');  %Set ticks outslide plotting area, remove box plot
+            initval.LegPlt=legend('Data','Fit');                                %Set labels legend
+            set(initval.LegPlt,'box', 'Off','Orientation','Horizontal');        %Remove box legend, align horizontal
+            if initval.basetresh > -1E20                                          %If baseline tresholding is on plot line
+                initval.BaseLine=repmat(initval.basetresh,1,length(Time));      %Generate array filled with baseline value
+                hold on
+                plot(Time,initval.BaseLine,...                                  %Plot treshold line                                              
+                'LineWidth',2,...
+                'Color',[1,0,0]); 
+                initval.LegPlt=legend('Data','Fit','Treshold');                             %Update labels legend
+                set(initval.LegPlt,'box', 'Off','Orientation','Horizontal');                %Remove box legend, align horizontal
+            end
         end
-
         if initval.singlerun == 0                                           %Save figure with fit, during batch mode
             cd(initval.datapath);                                               %Set current directory to datapath
             initval.FitPlt = figure('visible', 'off');                          %Plot invisible figure for saving
@@ -908,7 +909,7 @@ disp('Saving Files...')
         cd(initval.codefolder);                                             %Set current directory to pwd
 
   %% Plotting user Plots
-        if initval.userplt==1
+        if initval.show_userplot
             User_Plot_Result(IndexAxis,Data,FinalFit,FinalSteps,S_Curves,initval);
             if initval.singlerun == 0                                           %Save userplot jpg if batch run is on
             cd(initval.SaveFolder);                                             %Set current directory to savefolder                                                   
@@ -918,7 +919,7 @@ disp('Saving Files...')
             end
         end
  %% Plotting S-Curve Evaluation
-        if initval.scurve_eval==1                                          
+    if initval.show_scurve_plot                                       
                 LS=length(S_Curves(:,1));
     Stepnumber = (1:1:LS)'; 
     SCurveRound1   = S_Curves(:,1); %S-Curve round 1
