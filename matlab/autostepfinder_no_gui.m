@@ -1,17 +1,19 @@
 function autostepfinder_no_gui(initval,Data, SaveName)
+% Original GUI-based code associated with:
 %% AutoStepfinder: A fast and automated step detection method for single-molecule analysis.
-%Luuk Loeff*, Jacob Kerssemakers*, Chirlmin Joo & Cees Dekker.
-% * Equal contribution
+%Luuk Loeff*, Jacob Kerssemakers*, Chirlmin Joo & Cees Dekker.   * Equal contribution
+%published in: Patterns 2021 Apr 30;2(5):100256. doi: 10.1016/j.patter.2021.100256.
+%code available in: https://zenodo.org/record/7540375#.ZFi8vXZBw2x
 
-%% Concise de overview: for details and explanation refer to main text.
-%Lines xxx contain the main loop as described in Figure S1
-%Lines xxx contain the 'core code' of a single-pass stepfinder
-%Lines xxx contain code related to dual-pass actions
-%Lines xxx-end contain code related to saving and plotting
-
+%% This version:
 %This version is adapted from the as-published GUI-based version. To stay
 %close to the description, settings and parameters have been changed as
-%little as possible
+%little as possible. 
+
+%% Concise de overview: for details and explanation refer to main text.
+%Lines 100-130 contain the main loop as described in Figure S1
+%Lines 130-150 contain the 'core code' of a single-pass stepfinder
+%Lines 750-end contain code related to saving and plotting
 
 if nargin<3
   % Parameters (& default value)
@@ -864,12 +866,11 @@ disp('Saving Files...')
       cd(initval.codefolder);
 
  %% Plotting  
-        close(findobj('type','figure','name','S-Curve Evaluation'));        %close S-curve plots --> for batch mode
-        close(findobj('type','figure','name','User plots'));                %close user plots --> for batch mode
-        close(findobj('type','figure','name','Noise_Estimator'));                %close noise plots --> for batch mode
-        cla;                                                                %clear axes 
+        close all;
+
         if initval.show_fitplot
-            plot(Time,Data,...                                                  %Plot Data
+             set(gcf, 'units', 'normalized', 'position', [0.02 0.38 0.71 0.5])       %Set size figure same as GUI
+             plot(Time,Data,...                                                  %Plot Data
             'LineWidth',2,....                                                  %Linewidth
             'Color',[0,0.2,1]);                                                 %Color line RBG
             hold on
