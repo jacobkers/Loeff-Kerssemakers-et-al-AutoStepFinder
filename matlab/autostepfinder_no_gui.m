@@ -1,7 +1,8 @@
+function autostepfinder_no_gui(initval,Data, SaveName)
 %% AutoStepfinder: A fast and automated step detection method for single-molecule analysis.
 %Luuk Loeff*, Jacob Kerssemakers*, Chirlmin Joo & Cees Dekker.
 % * Equal contribution
-% Last update: March 2021
+
 %% Concise de overview: for details and explanation refer to main text.
 %Lines xxx contain the main loop as described in Figure S1
 %Lines xxx contain the 'core code' of a single-pass stepfinder
@@ -12,8 +13,6 @@
 %close to the description, settings and parameters have been changed as
 %little as possible
 
- function autostepfinder_no_gui(initval,Data, SaveName)
- %This is the main, multi-pass loop of the autostepfinder
 if nargin<3
   %% Parameters (& default value)
      %% run settings
@@ -27,7 +26,8 @@ if nargin<3
     else    
       initval.hand_load     =  2;       %Batch Run
       initval.datapath      = uigetdir(initval.datapath);   %Get directory for batch analysis
-    end    
+    end 
+    initval.nextfile=0;
       
     %% paths
     initval.datapath        = pwd;          %starting data path    
@@ -52,7 +52,7 @@ if nargin<3
     initval.max_range       = 40;       %Max range for noise estimation   
     initval.userplt         = 0;        %Turn user plot function on/ off
     initval.scurve_eval     = 0;        %Turn S-curve evaluation on/ off     
-    initval.treshonoff      = 0;        %Turn base line treshholding on/ off
+    initval.basetresh     = -1E20;      %base line treshhold level (set -1E20 to turn off)
     
     %% saving formats
     initval.txtoutput       = 1;        %Output .txt files
@@ -64,22 +64,10 @@ if nargin<3
     
    
     %% noise and step error handling
-    initval.estimatenoise   = 0;        %Noise estimation on
-    if initval.treshonoff   == 1
-      initval.basetresh     = initval.meanbase;     %Treshhold the mean of your base line
-    else
-      initval.basetresh     = -1E12;
-    end    
-    initval.booton   = 0;               %bootstrap noise estimation on
-    if initval.booton   == 1
-    initval.bootstraprepeats=1000;      %Add bootstrap erorrs per step
-    else
-    initval.bootstraprepeats=0;
-    end   
- 
+    initval.estimatenoise   = 0;        %data noise estimation on
+    initval.bootstraprepeats=0;     % %bootstrap eror cycles per step (0=off) 
 end
- 
- while initval.nextfile>0 
+
      if nargin < 3
         [Data,SaveName,initval]=Get_Data(initval);
      end
@@ -136,7 +124,6 @@ end
                             S_Curves, FinalSteps,N_found_steps_per_round);     
      end        
      disp('done!');
- end
 
 
 %% This section contains the 'Core' function of the stepfinder; 
@@ -898,7 +885,7 @@ disp('Saving Files...')
         set(gca,'TickDir','out','TickLength',[0.003 0.0035],'box', 'off');  %Set ticks outslide plotting area, remove box plot
         initval.LegPlt=legend('Data','Fit');                                %Set labels legend
         set(initval.LegPlt,'box', 'Off','Orientation','Horizontal');        %Remove box legend, align horizontal
-        if initval.treshonoff == 1                                          %If baseline tresholding is on plot line
+        if initval.basetresh > -1E20                                          %If baseline tresholding is on plot line
             initval.BaseLine=repmat(initval.basetresh,1,length(Time));      %Generate array filled with baseline value
             hold on
             plot(Time,initval.BaseLine,...                                  %Plot treshold line                                              
