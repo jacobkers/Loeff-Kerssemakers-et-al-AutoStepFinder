@@ -8,64 +8,81 @@
 %Lines xxx contain code related to dual-pass actions
 %Lines xxx-end contain code related to saving and plotting
 
- function autostepfinder_no_gui(initval)
+%This version is adapted from the as-published GUI-based version. To stay
+%close to the description, settings and parameters have been changed as
+%little as possible
+
+ function autostepfinder_no_gui(initval,Data, SaveName)
  %This is the main, multi-pass loop of the autostepfinder
-if nargin<1
-  %% Parameters (& default value)    
-    initval.datapath        = pwd;          %Data path    
-    initval.codefolder      = pwd;    
-    initval.GlobalErrorAccept=0.1;           %User value for accepting a split or merge round solution   
-    initval.SMaxTreshold    = 0.15; 
-    initval.overshoot       = 1 ;            %Increase of decrease the number to-be-fitted steps relative to the determined optimum.      
-    initval.fitrange        = 1000;       
-    initval.stepnumber      = initval.fitrange;    %Iteration range of the measurement
-    initval.nextfile        = 1;                                
-    initval.resolution      = 1;       %Resolution of measurement
-    initval.meanbase        = 0;      %Mean value of the base line
-    initval.max_range       = 40; %Max range for noise estimation   
-    initval.userplt         = 0;           %Turn user plot function on/ off
-    initval.scurve_eval     = 0;          %Turn S-curve evaluation on/ off
-    initval.fitmean         = 1;             %Use mean for fitting
-    initval.fitmedian       = 0;           %Use median for fitting
-    initval.treshonoff      = 0;         %Turn base line treshholding on/ off
-    initval.txtoutput       = 1;           %Output .txt files
-    initval.matoutput       = 0;           %Output .mat files
-    initval.setsteps        = str2double(get(handles.manualmodesteps,...%Resolution of measurement
-                              'string'));
-    initval.parametersout   = 1;       %Save parameters output file.
-    initval.fitsoutput      = 1;          %Save fits output file.
-    initval.propoutput      = 1;          %Save properties output file.
-    initval.scurvesoutput   = 1;       %Save S-curves output file.
-    initval.manualoff       = 1;           %Manual mode off
-    initval.manualon        = 0;            %Manual mode on
-    initval.estimatenoise   = 0;         %Noise estimation on
-    if initval.treshonoff   == 1
-      initval.basetresh     = initval.meanbase;                         %Treshhold the mean of your base line
-    else
-      initval.basetresh     = -100000;
-    end
-    
-    initval.booton   = 0;         %Noise estimation on
-    if initval.booton   == 1
-    initval.bootstraprepeats=1000;                           %Add bootstrap erorrs per step
-    else
-    initval.bootstraprepeats=0;
-    end
-    initval.singlerun       = 1;             %Single or batch run
+if nargin<3
+  %% Parameters (& default value)
+     %% run settings
+    initval.singlerun       = 1;        %Single or batch run
     if initval.singlerun    == 1
-      initval.hand_load     =  1;                                       %Single Run
+      initval.hand_load     =  1;       %Single Run
       initval.rerun         =  0;
       if initval.rerun      == 1
-         initval.hand_load =  0;
+         initval.hand_load =  0;        %load last configuration
       end
     else    
-      initval.hand_load     =  2;                                       %Batch Run
-      initval.datapath      = uigetdir(initval.datapath);               %Get directory for batch analysis
+      initval.hand_load     =  2;       %Batch Run
+      initval.datapath      = uigetdir(initval.datapath);   %Get directory for batch analysis
     end    
+      
+    %% paths
+    initval.datapath        = pwd;          %starting data path    
+    initval.codefolder      = pwd;    
+    initval.GlobalErrorAccept=0.1;           %User value for accepting a split or merge round solution   
+   
+    %% essentials
+    initval.SMaxTreshold    = 0.15; 
+    initval.fitrange        = 1000;       
+    
+    %% tuning and basic processing
+    initval.overshoot       = 1;            %Increase of decrease the number to-be-fitted steps relative to the determined optimum.      
+    initval.fitmean         = 1;        %Use mean for fitting, else median
+    initval.manualon        = 0;        %Manual mode
+    initval.N_manualsteps   = 100;      %if used, this forces a set number of steps   
+    
+    %% post processing and various
+    initval.stepnumber      = initval.fitrange;    %Iteration range of the measurement
+    initval.nextfile        = 1;                                
+    initval.resolution      = 1;        %Resolution of measurement
+    initval.meanbase        = 0;        %Mean value of the base line
+    initval.max_range       = 40;       %Max range for noise estimation   
+    initval.userplt         = 0;        %Turn user plot function on/ off
+    initval.scurve_eval     = 0;        %Turn S-curve evaluation on/ off     
+    initval.treshonoff      = 0;        %Turn base line treshholding on/ off
+    
+    %% saving formats
+    initval.txtoutput       = 1;        %Output .txt files
+    initval.matoutput       = 0;        %Output .mat files    
+    initval.parametersout   = 1;        %Save parameters output file.
+    initval.fitsoutput      = 1;        %Save fits output file.
+    initval.propoutput      = 1;        %Save properties output file.
+    initval.scurvesoutput   = 1;        %Save S-curves output file.
+    
+   
+    %% noise and step error handling
+    initval.estimatenoise   = 0;        %Noise estimation on
+    if initval.treshonoff   == 1
+      initval.basetresh     = initval.meanbase;     %Treshhold the mean of your base line
+    else
+      initval.basetresh     = -1E12;
+    end    
+    initval.booton   = 0;               %bootstrap noise estimation on
+    if initval.booton   == 1
+    initval.bootstraprepeats=1000;      %Add bootstrap erorrs per step
+    else
+    initval.bootstraprepeats=0;
+    end   
+ 
 end
  
  while initval.nextfile>0 
-    [Data,SaveName,initval]=Get_Data(initval, handles);
+     if nargin < 3
+        [Data,SaveName,initval]=Get_Data(initval);
+     end
      infcheck=isinf(Data);
      nancheck=isnan(Data);
      [LD,cols]=size(Data);
@@ -114,7 +131,7 @@ end
        end
     else          
     [FinalSteps, FinalFit]=BuildFinalfit(IndexAxis,Data,full_split_log,initval);                 
-     SaveAndPlot(   initval,SaveName,handles,...
+     SaveAndPlot(   initval,SaveName,...
                             IndexAxis, Data, FinalFit,...
                             S_Curves, FinalSteps,N_found_steps_per_round);     
      end        
@@ -320,9 +337,12 @@ function cFitX=Adapt_cFit(f,idx,cFitX,X)
   function FitX=Get_FitFromStepsindices(X,indexlist,initval) 
       
       % This function builds plateau data
-    %list of levels: [startindex  stopindex starttime stoptime level dwell stepbefore stepafter]
-        if initval.fitmean&&~initval.fitmedian, modus='mean';end
-        if ~initval.fitmean&&initval.fitmedian, modus='median';end
+     %list of levels: [startindex  stopindex starttime stoptime level dwell stepbefore stepafter]
+        if initval.fitmean
+            modus='mean';
+        else
+            modus='median';
+        end
     lx=length(X);
         lsel=length(indexlist); %note: index points to last point before step
 
@@ -400,11 +420,10 @@ function [FinalSteps, FinalFit]=BuildFinalfit(T,X,splitlog,initval)
 %analysis to accept second-round (residual) steps or not 
     best_shot=length(find(splitlog(:,2)<3)); %all non-duplicates
   
-    if (initval.manualoff==1 && initval.manualon==0)
+    if initval.manualon==0
         steps_to_pick=round(initval.overshoot*best_shot);
-    end
-    if (initval.manualoff==0 && initval.manualon==1)
-        steps_to_pick=initval.setsteps;
+    else
+        steps_to_pick=initval.N_manualsteps;
     end
     %select indices to use
     bestlist=(splitlog(1:steps_to_pick,:));  
@@ -423,7 +442,7 @@ function [FinalSteps, FinalFit]=BuildFinalfit(T,X,splitlog,initval)
     %treshold of removing is based on the avarage erros of the steps found in
     %round 1.      
     localstepmerge=1;
-    if (localstepmerge && ~initval.setsteps)
+    if (localstepmerge && ~initval.N_manualsteps)
         % Default: Keep round 1-steps AND 'good' round 2 steps:
         % Get a   measure for the error of steps in the first round. 
         % This can be used for reference of errors from second-round steps
@@ -454,7 +473,7 @@ function [FinalSteps, FinalFit]=BuildFinalfit(T,X,splitlog,initval)
     end
             
     
-function [data,SaveName,initval]=Get_Data(initval, handles)
+function [data,SaveName,initval]=Get_Data(initval)
 % This function loads the data, either standard or user-choice
     disp('Loading..');
     CurrentFolder=pwd;
@@ -495,7 +514,6 @@ function [data,SaveName,initval]=Get_Data(initval, handles)
         try
         data=double(dlmread(source));
         save('config_last_run.mat','initval');
-        set(handles.rerun,'enable','On');
         catch
             errorfile=[num2str(FileName),' is not formatted properly.'];
             msgbox(errorfile,'ERROR', 'error')
@@ -520,7 +538,6 @@ function [data,SaveName,initval]=Get_Data(initval, handles)
             data=double(dlmread(strcat(initval.datapath,'\',FileName)));
             end
             save('config_last_run.mat','initval');
-            set(handles.rerun,'enable','Off');
             catch
             errorfile=[num2str(FileName),' is not formatted properly.'];
             msgbox(errorfile,'ERROR', 'error')
@@ -740,8 +757,7 @@ for ii=1:length(indices)
 end
 
 
-function SaveAndPlot(initval,SaveName,handles,...
-        IndexAxis,Data,FinalFit,...
+function SaveAndPlot(initval,SaveName,IndexAxis,Data,FinalFit,...
         S_Curves, FinalSteps,N_found_steps_per_round)
 
 %This function saves and plots data.
@@ -859,12 +875,12 @@ disp('Saving Files...')
       %cd(curpth);
       cd(initval.codefolder);
 
- %% Plotting in GUI  
+ %% Plotting  
         close(findobj('type','figure','name','S-Curve Evaluation'));        %close S-curve plots --> for batch mode
         close(findobj('type','figure','name','User plots'));                %close user plots --> for batch mode
         close(findobj('type','figure','name','Noise_Estimator'));                %close noise plots --> for batch mode
         cla;                                                                %clear axes 
-        axis(handles.plot_fit);
+
         plot(Time,Data,...                                                  %Plot Data
         'LineWidth',2,....                                                  %Linewidth
         'Color',[0,0.2,1]);                                                 %Color line RBG
@@ -896,7 +912,6 @@ disp('Saving Files...')
             cd(initval.datapath);                                               %Set current directory to datapath
             initval.FitPlt = figure('visible', 'off');                          %Plot invisible figure for saving
             set(gcf, 'units', 'normalized', 'position', [0.01 1 0.7 0.5])       %Set size figure same as GUI
-            copyobj(handles.plot_fit, initval.FitPlt);                          %Copy figure from GUI
             xlabel('Time (s)','FontSize',12);                                   %Set label X axis
             ylabel('Position (A.U.)','FontSize',12);                            %Set label Y axis
             set(gca,'TickDir','out','TickLength',[0.003 0.0035],'box', 'off');  %Set ticks outslide plotting area, remove box plot
@@ -936,7 +951,7 @@ disp('Saving Files...')
     plot(Stepnumber,SCurveRound2,'b-', 'LineWidth',1); hold on
     plot(Stepnumber,ThreshHold,'r--', 'LineWidth',1);
         if initval.manualon ==1 % manual mode engaged
-        manualmodesteps =  initval.setsteps;
+        manualmodesteps =  initval.N_manualsteps;
         plot(manualmodesteps,SCurveRound1(manualmodesteps),'ro','MarkerSize',12);
         title('Multi-pass S-curves');
     legend('Round 1','Round 2','Threshold','Manual');
