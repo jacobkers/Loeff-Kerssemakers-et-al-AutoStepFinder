@@ -12,35 +12,35 @@ Luuk Loeff[1,2,3], Jacob W. J. Kerssemakers[1,3], Chirlmin Joo1 [4], Cees Dekker
  4 Correspondence: C.Joo@tudelft.nl (CJ), C.Dekker@tudelft.nl (CD)
 
 ## HIGHLIGHTS
- •	Fast, automated, and bias-free detection of steps within single-molecule trajectories.
- •	Robust step detection without any prior knowledge on the data.
- •	A dual-pass strategy for the detection of steps over a wide variety of scales.
- •	[Matlab:] a user-friendly interface for a simplified step fitting procedure
- •	[Python:] a command-line style development version in freely available Python (post-publication)
+ *	Fast, automated, and bias-free detection of steps within single-molecule trajectories.
+ *	Robust step detection without any prior knowledge on the data.
+ *	A dual-pass strategy for the detection of steps over a wide variety of scales.
+ *	[Matlab:] a user-friendly interface for a simplified step fitting procedure
+ *	[Python:] a command-line style development version in freely available Python (post-publication)
 
 ## NEWS for release V2.1.0
- • Matlab: a non-gui version together with a demo stub was added to Auxiliary Tools. 
+ * Matlab: a non-gui version together with a demo stub was added to Auxiliary Tools. 
    This version follows the exact same analysis steps, but allows easy nested use in custom-written code
 
 ## SUMMARY
 Single-molecule techniques allow the visualization of the molecular dynamics of nucleic acids and proteins with high spatio-temporal resolution, for example a motor protein stepping along DNA. Valuable kinetic information of biomolecules can be obtained when the discrete states within single-molecule time trajectories are determined. Here we present a fast, automated, and bias-free step-detection method, AutoStepfinder, that we developed to determine steps in large datasets without requiring prior knowledge on the noise contributions, distribution, and location of steps. The analysis is based on a series of partition events that minimize the difference between the data and the fit. A dual-pass strategy determines the optimal fit and allows AutoStepfinder to detect steps of a wide variety of sizes. We demonstrate successful step detection for a broad variety of experimental traces. The user-friendly interface and the automated detection of AutoStepfinder provides a robust analysis procedure that enables anyone without programming knowledge to generate step fits and informative plots in less than an hour. 
 
 ## REPOSITORY CONTENTS [Matlab]
- •	code to analyze steps: 'AutoStepFinder' [both GUI and non-GUI based]
- •	code for cleaning data from corrupted points (such as Inf): 'DataDuster'
- •	code for generating test traces : 'StepMaker'
- •	test traces (multi and single column .txt)
+ *	code to analyze steps: 'AutoStepFinder' [both GUI and non-GUI based]
+ *	code for cleaning data from corrupted points (such as Inf): 'DataDuster'
+ *	code for generating test traces : 'StepMaker'
+ *	test traces (multi and single column .txt)
 
 ## REPOSITORY CONTENTS [Python]
- •	code to analyze steps: 'AutoSteppyfinder' [non-GUI based]
- •	test traces (single column .txt)
+ *	code to analyze steps: 'AutoSteppyfinder' [non-GUI based]
+ *	test traces (single column .txt)
 
 ## FOR USERS
- •	an elaborate manual is included with Supplemental information in the paper [written for Matlab version]
- •	for further details, see sub-repository README's
- •	disclaimer: Whileas code is continously tested and developed,small bugs may still occur. 
+ *	an elaborate manual is included with Supplemental information in the paper [written for Matlab version]
+ *	for further details, see sub-repository README's
+ *	disclaimer: Whileas code is continously tested and developed,small bugs may still occur. 
 	Feed back is appreciated via Github 
- •	please cite the paper when using this code
- •	for questions regarding this code, please contact:
+ *	please cite the paper when using this code
+ *	for questions regarding this code, please contact:
 	Dr. Jacob Kerssemakers (j.w.j.kerssemakers@tudelft.nl) or
 	Dr. Luuk Loeff (l.loeff@bioc.uzh.ch)
