@@ -1,4 +1,4 @@
-function autostepfinder_no_gui(initval,Data, SaveName)
+function [FinalFit,FinalSteps] =AutoStepfinder_no_gui(Data, SaveName,initval)
 % Original GUI-based code associated with:
 %% AutoStepfinder: A fast and automated step detection method for single-molecule analysis.
 %Luuk Loeff*, Jacob Kerssemakers*, Chirlmin Joo & Cees Dekker.   * Equal contribution
@@ -8,70 +8,90 @@ function autostepfinder_no_gui(initval,Data, SaveName)
 %% This version:
 %This version is adapted from the as-published GUI-based version. To stay
 %close to the description, settings and parameters have been changed as
-%little as possible. 
+%little as possible.
+
+%% usage:
+%1) direct: run it and open a text file, for formats see published manual 
+%2) from code: 
+%    i) autostepfinder_no_gui(Data, SaveName);
+%    ii)autostepfinder_no_gui(Data, SaveName, initval);
+%with: 
+    %Data:     a single-column text file
+    %SaveName: a string used for saving results
+    %initval: run settings, see below and the published manual.
 
 %% Concise de overview: for details and explanation refer to main text.
 %Lines 100-130 contain the main loop as described in Figure S1
 %Lines 130-150 contain the 'core code' of a single-pass stepfinder
 %Lines 750-end contain code related to saving and plotting
 
-if nargin<3
-  % Parameters (& default value)
-     %% run settings
-    initval.singlerun       = 1;        %Single or batch run
-    if initval.singlerun    == 1
-      initval.hand_load     =  1;       %Single Run
-      initval.rerun         =  0;
-      if initval.rerun      == 1
-         initval.hand_load =  0;        %load last configuration
-      end
-    else    
-      initval.hand_load     =  2;       %Batch Run
-      initval.datapath      = uigetdir(initval.datapath);   %Get directory for batch analysis
-    end    
+    if nargin<3   
+      % Parameters (& default value) 
+        %specific for the non-gui version:
+      %%specific for non-gui version to facilitate clean nested usage:
+        initval.no_save=0;
+        initval.no_plot=0;
+    
       
-    %% paths
-    initval.datapath        = pwd;          %starting data path    
-    initval.codefolder      = pwd;    
-    initval.GlobalErrorAccept=0.1;           %User value for accepting a split or merge round solution   
-   
-    %% essentials
-    initval.SMaxTreshold    = 0.15; 
-    initval.fitrange        = 1000;       
-    
-    %% tuning and basic processing
-    initval.overshoot       = 1;            %Increase of decrease the number to-be-fitted steps relative to the determined optimum.      
-    initval.fitmean         = 1;        %Use mean for fitting, else median
-    initval.manualon        = 0;        %Manual mode
-    initval.N_manualsteps   = 100;      %if used, this forces a set number of steps   
-    
-    %% post processing and various
-    initval.stepnumber      = initval.fitrange;    %Iteration range of the measurement
-    initval.nextfile        = 0;                                
-    initval.resolution      = 1;        %Resolution of measurement
-    initval.meanbase        = 0;        %Mean value of the base line
-    initval.max_range       = 40;       %Max range for noise estimation       
-    initval.basetresh     = -1E20;      %base line treshhold level (set -1E20 to turn off)
-    
-    %% show result for diagnosis
-    initval.show_fitplot =      1;
-    initval.show_userplot =     1;       
-    initval.show_scurve_plot  = 1;      
-    
-    %% saving formats
-    initval.txtoutput       = 1;        %Output .txt files
-    initval.matoutput       = 0;        %Output .mat files    
-    initval.parametersout   = 1;        %Save parameters output file.
-    initval.fitsoutput      = 1;        %Save fits output file.
-    initval.propoutput      = 1;        %Save properties output file.
-    initval.scurvesoutput   = 1;        %Save S-curves output file.   
-   
-    %% noise and step error handling
-    initval.estimatenoise   = 0;        %data noise estimation on
-    initval.bootstraprepeats=0;     % %bootstrap eror cycles per step (0=off)
-end
+        %% paths
+        initval.datapath        = pwd;          %starting data path    
+        initval.codefolder      = pwd;    
+        initval.GlobalErrorAccept=0.1;           %User value for accepting a split or merge round solution   
 
-     if nargin < 3
+        %% essentials
+        initval.SMaxTreshold    = 0.15; 
+        initval.fitrange        = 1000;       
+
+        %% tuning and basic processing
+        initval.overshoot       = 1;            %Increase of decrease the number to-be-fitted steps relative to the determined optimum.      
+        initval.fitmean         = 1;        %Use mean for fitting, else median
+        initval.manualon        = 0;        %Manual mode
+        initval.N_manualsteps   = 100;      %if used, this forces a set number of steps   
+
+        %% post processing and various
+        initval.stepnumber      = initval.fitrange;    %Iteration range of the measurement
+        initval.nextfile        = 0;                                
+        initval.resolution      = 1;        %Resolution of measurement
+        initval.meanbase        = 0;        %Mean value of the base line
+        initval.max_range       = 40;       %Max range for noise estimation       
+        initval.basetresh     = -1E20;      %base line treshhold level (set -1E20 to turn off)
+
+        %% show result for diagnosis
+        initval.show_fitplot =      1;
+        initval.show_userplot =     1;       
+        initval.show_scurve_plot  = 1;      
+
+        %% saving formats
+        initval.txtoutput       = 1;        %Output .txt files
+        initval.matoutput       = 0;        %Output .mat files    
+        initval.parametersout   = 1;        %Save parameters output file.
+        initval.fitsoutput      = 1;        %Save fits output file.
+        initval.propoutput      = 1;        %Save properties output file.
+        initval.scurvesoutput   = 1;        %Save S-curves output file.   
+
+        %% noise and step error handling
+        initval.estimatenoise   = 0;        %data noise estimation on
+        initval.bootstraprepeats=0;     % %bootstrap eror cycles per step (0=off)
+        
+        %% run settings
+      %Note: it is advised to leave the 'run' settings as-is as these are
+      %linked to the original GUI version. This version is understood to
+      %work with one file at a time.        
+        initval.singlerun       = 1;        %Single or batch run
+        if initval.singlerun    == 1
+          initval.hand_load     =  1;       %Single Run
+          initval.rerun         =  0;
+          if initval.rerun      == 1
+             initval.hand_load =  0;        %load last configuration
+          end
+        else    
+          initval.hand_load     =  2;       %Batch Run
+          initval.datapath      = uigetdir(initval.datapath);   %Get directory for batch analysis
+        end 
+        
+    end
+
+     if nargin < 2
         [Data,SaveName,initval]=Get_Data(initval);
      end
      infcheck=isinf(Data);
@@ -756,13 +776,14 @@ disp('Steps found:'), disp(stepno_final);
 disp('Saving Files...')
 
      %% plot and save section
+     if ~initval.no_save
         initval.SaveFolder                =  [SaveName,'_Fitting_Result'];       	%Make new folder to save results
         initval.SaveFolder                 = 'StepFit_Result';                      %Make new folder to save results
         initval.SaveFolder                 =  fullfile(initval.datapath, initval.SaveFolder);
          if ~exist(initval.SaveFolder, 'dir')                                       %Check if folder already exists
          mkdir(initval.SaveFolder);                                                 %If not create new folder 
          end    
-    
+     end
     %Fits
       Time                      = IndexAxis*initval.resolution;                 %Time Axis 
       
@@ -792,82 +813,81 @@ disp('Saving Files...')
                                    *initval.resolution;  
       end
       
-      curpth=pwd;
-      cd(initval.SaveFolder);
       
-      if initval.txtoutput == 1
-      initval.savestring='txt';
-      end
-      
-      if initval.matoutput == 1
-      initval.savestring='mat';
-      end
-      
-      switch initval.savestring
-          case 'txt' 
-              config_table              = struct2table(orderfields(initval));              
-              fits_table                = table(Time, Data, FinalFit);          %Save variables in table           
-              
-              
-              if initval.bootstraprepeats==0           
-              properties_table          = table(IndexStep,TimeStep,...          %Save variables in table
-                                          LevelBefore,LevelAfter,StepSize,...
-                                          DwellTimeStepBefore,DwellTimeStepAfter,StepError);
-              else
-              properties_table          = table(IndexStep,TimeStep,...          %Save variables in table
-                                          LevelBefore,LevelAfter,StepSize,...
-                                          DwellTimeStepBefore,DwellTimeStepAfter,StepError,...
-                                          StepError_boot, DwellError_boot);
-              end
-              s_curve_table              = table(Stepnumber, SCurveRound1,...    %Save variables in table 
-                                          SCurveRound2);                         
-       if initval.fitsoutput == 1
-               writetable(fits_table, [SaveName,'_fits.txt']);                   %Save table containing fits                       
-       end
-       if initval.propoutput == 1
-               writetable(properties_table, [SaveName,'_properties.txt']);       %Save table containing properties                          
-       end
-       if initval.scurvesoutput == 1
-               writetable(s_curve_table, [SaveName,'_s_curve.txt']);               %Save table containing S-curves     
-       end       
-       if initval.parametersout == 1
-               writetable(config_table, [SaveName,'_config.txt']);               %Save table containing S-curves     
-       end
-     
-       case 'mat'
-       if initval.fitsoutput == 1       
-              save([SaveName,'_fits'],'Time', 'Data', 'FinalFit'); 
-       end
-       if (initval.propoutput == 1 && initval.bootstraprepeats==0)
-              save([SaveName,'_properties'],...
-                 'IndexStep','TimeStep',...   
-                 'LevelBefore','LevelAfter','StepSize',...
-                 'DwellTimeStepBefore','DwellTimeStepAfter',...
-                 'StepError');
-       end       
-      if (initval.propoutput == 1 && initval.bootstraprepeats>0)
-              save([SaveName,'_properties'],...
-                 'IndexStep','TimeStep',...   
-                 'LevelBefore','LevelAfter','StepSize',...
-                 'DwellTimeStepBefore','DwellTimeStepAfter',...
-                 'StepError', 'StepError_boot','DwellError_boot');
-       end
-       if initval.scurvesoutput == 1 
-               save([SaveName,'_s_curve'],...
-                 'Stepnumber', 'SCurveRound1','SCurveRound2');
-       end
-       if initval.parametersout == 1
-              save([SaveName,'_config'],...
-                 'initval');   
-       end
-       
-      end
-      %cd(curpth);
-      cd(initval.codefolder);
+      if ~initval.no_save
+          curpth=pwd;    
+          cd(initval.SaveFolder);      
+          if initval.txtoutput == 1
+          initval.savestring='txt';
+          end     
+          if initval.matoutput == 1
+          initval.savestring='mat';
+          end      
+          switch initval.savestring
+              case 'txt' 
+                  config_table              = struct2table(orderfields(initval));              
+                  fits_table                = table(Time, Data, FinalFit);          %Save variables in table           
 
- %% Plotting  
+
+                  if initval.bootstraprepeats==0           
+                  properties_table          = table(IndexStep,TimeStep,...          %Save variables in table
+                                              LevelBefore,LevelAfter,StepSize,...
+                                              DwellTimeStepBefore,DwellTimeStepAfter,StepError);
+                  else
+                  properties_table          = table(IndexStep,TimeStep,...          %Save variables in table
+                                              LevelBefore,LevelAfter,StepSize,...
+                                              DwellTimeStepBefore,DwellTimeStepAfter,StepError,...
+                                              StepError_boot, DwellError_boot);
+                  end
+                  s_curve_table              = table(Stepnumber, SCurveRound1,...    %Save variables in table 
+                                              SCurveRound2);                         
+           if initval.fitsoutput == 1
+                   writetable(fits_table, [SaveName,'_fits.txt']);                   %Save table containing fits                       
+           end
+           if initval.propoutput == 1
+                   writetable(properties_table, [SaveName,'_properties.txt']);       %Save table containing properties                          
+           end
+           if initval.scurvesoutput == 1
+                   writetable(s_curve_table, [SaveName,'_s_curve.txt']);               %Save table containing S-curves     
+           end       
+           if initval.parametersout == 1
+                   writetable(config_table, [SaveName,'_config.txt']);               %Save table containing S-curves     
+           end
+
+           case 'mat'
+           if initval.fitsoutput == 1       
+                  save([SaveName,'_fits'],'Time', 'Data', 'FinalFit'); 
+           end
+           if (initval.propoutput == 1 && initval.bootstraprepeats==0)
+                  save([SaveName,'_properties'],...
+                     'IndexStep','TimeStep',...   
+                     'LevelBefore','LevelAfter','StepSize',...
+                     'DwellTimeStepBefore','DwellTimeStepAfter',...
+                     'StepError');
+           end       
+          if (initval.propoutput == 1 && initval.bootstraprepeats>0)
+                  save([SaveName,'_properties'],...
+                     'IndexStep','TimeStep',...   
+                     'LevelBefore','LevelAfter','StepSize',...
+                     'DwellTimeStepBefore','DwellTimeStepAfter',...
+                     'StepError', 'StepError_boot','DwellError_boot');
+           end
+           if initval.scurvesoutput == 1 
+                   save([SaveName,'_s_curve'],...
+                     'Stepnumber', 'SCurveRound1','SCurveRound2');
+           end
+           if initval.parametersout == 1
+                  save([SaveName,'_config'],...
+                     'initval');   
+           end
+
+          end
+          %cd(curpth);
+          cd(initval.codefolder);
+      end
+ %% Plotting 
+    if ~ initval.no_plot
         close all;
-
         if initval.show_fitplot
              set(gcf, 'units', 'normalized', 'position', [0.02 0.38 0.71 0.5])       %Set size figure same as GUI
              plot(Time,Data,...                                                  %Plot Data
@@ -981,45 +1001,46 @@ if max_range < 1;
     msgbox('The time range for noise estimation is smaller than 1 and has been rescaled to a value of 2.','Warning', 'warn')
 end
 
-if initval.estimatenoise==1
-trace = Data - FinalFit;
-Cp=length(trace);
+   if initval.estimatenoise==1
+        trace = Data - FinalFit;
+        Cp=length(trace);
 
-%build difference maps
-map=repmat(trace',max_range,1);
-shiftmap=NaN*zeros(max_range,Cp);
-for ii=1:max_range
-    shiftmap(ii,1:Cp-ii)=trace(ii+1:end);
-end
-difmap_sq=(map-shiftmap).^2;
+        %build difference maps
+        map=repmat(trace',max_range,1);
+        shiftmap=NaN*zeros(max_range,Cp);
+        for ii=1:max_range
+            shiftmap(ii,1:Cp-ii)=trace(ii+1:end);
+        end
+        difmap_sq=(map-shiftmap).^2;
 
-%get differences
-crop_hi=0.01;
-noisecurve=zeros(max_range,1);
-for rg=1:max_range
-    sqdif_sort=sort(difmap_sq(rg,:));
-    sqdif_lo=sqdif_sort(1:round((1-crop_hi)*Cp));
-    noisecurve(rg)=(mean(sqdif_lo, 'omitnan')).^0.5/(2^0.5);
-end
+        %get differences
+        crop_hi=0.01;
+        noisecurve=zeros(max_range,1);
+        for rg=1:max_range
+            sqdif_sort=sort(difmap_sq(rg,:));
+            sqdif_lo=sqdif_sort(1:round((1-crop_hi)*Cp));
+            noisecurve(rg)=(mean(sqdif_lo, 'omitnan')).^0.5/(2^0.5);
+        end
 
-figure('Name','Noise_Estimator','NumberTitle','off','units', 'normalized', 'position', [0.57 0.1 0.40 0.15]); %[0.745 0.1 0.25 0.4])
-  %[0.745 0.32 0.25 0.6]);
-    plot(noisecurve,'LineWidth',2, 'Color',[0,0.2,1]);  hold on
-    plot(1,noisecurve(1),'ro','MarkerSize',12);  hold on       
-    xlabel('Range (pts)')
-    ylabel('Noise (measurmeent units)');
-    est_noise=median(noisecurve);
-    noisecurve_est=0*noisecurve+est_noise;
-    plot(noisecurve_est,'LineWidth',1, 'Color','r');  hold on
-    mediannoise=num2str(est_noise);
-    text(5,noisecurve_est(1),mediannoise)
-    title('Noise estimate')
-    legend('Residual noise','Pairwise distance estimate', 'Median','Location', 'WestOutSide');
-    if initval.singlerun == 0                            %if batch run is on
-        pause(1);
+        figure('Name','Noise_Estimator','NumberTitle','off','units', 'normalized', 'position', [0.57 0.1 0.40 0.15]); %[0.745 0.1 0.25 0.4])
+          %[0.745 0.32 0.25 0.6]);
+            plot(noisecurve,'LineWidth',2, 'Color',[0,0.2,1]);  hold on
+            plot(1,noisecurve(1),'ro','MarkerSize',12);  hold on       
+            xlabel('Range (pts)')
+            ylabel('Noise (measurmeent units)');
+            est_noise=median(noisecurve);
+            noisecurve_est=0*noisecurve+est_noise;
+            plot(noisecurve_est,'LineWidth',1, 'Color','r');  hold on
+            mediannoise=num2str(est_noise);
+            text(5,noisecurve_est(1),mediannoise)
+            title('Noise estimate')
+            legend('Residual noise','Pairwise distance estimate', 'Median','Location', 'WestOutSide');
+            if initval.singlerun == 0                            %if batch run is on
+                pause(1);
+            end
+            hold off;
+        end
     end
-    hold off;
-end
 
 function User_Plot_Result(~,~,~,FinalSteps,~,initval)
 %This function can be used to present user (and experiment-specific plots
