@@ -15,7 +15,21 @@ macro bind(def, element)
 end
 
 # ╔═╡ ac949aea-be3f-404d-8a8b-22c25b26ee38
-using Pkg; Pkg.activate(ENV["JLaserLab"])
+using Pkg; Pkg.activate("/Users/pabloherrero/sabat/AutoStepFinder/julia/autostepfinder")
+
+# ╔═╡ a03bd74c-dc79-4f88-a142-815a6e94954c
+begin
+	Pkg.add("DelimitedFiles")
+	Pkg.add("Plots")
+	Pkg.add("PlutoUI")
+	Pkg.add("Images")
+	Pkg.add("ImageView")
+	Pkg.add("Colors")
+	Pkg.add("FixedPointNumbers")
+	Pkg.add("Statistics")
+	Pkg.add("Revise")
+	#Pkg.add("GR")
+end
 
 # ╔═╡ 980dcf83-1e5c-4559-a42b-b02b0db094b3
 # ╠═╡ show_logs = false
@@ -28,17 +42,22 @@ begin
 	using Colors
 	using FixedPointNumbers
 	using Statistics
+	using Revise
 	#using GR
 end
 
-# ╔═╡ cce4b21e-81e7-4e6c-ad7c-014f9f1d72ea
-ENV["JLaserLab"]
-
 # ╔═╡ ee654cd8-b63a-4e5e-96f8-3104bea4fa60
-#Pkg.instantiate()
+Pkg.instantiate()
+
+# ╔═╡ 16cbcb03-5dc5-4219-8337-c3024d805338
+# ╠═╡ show_logs = false
+Pkg.resolve()
+
+# ╔═╡ d09a5620-570a-4f16-9e0d-f24fb6ba1fbc
+Pkg.status()
 
 # ╔═╡ 933774f1-9a00-4ee0-98e0-980f9e8fb930
-#Pkg.precompile()
+Pkg.precompile()
 
 # ╔═╡ 99ea72eb-b944-4d2a-9347-f4d9255ac790
 function ingredients(path::String)
@@ -57,7 +76,7 @@ end
 
 # ╔═╡ c22c5abe-980b-11ee-268c-b16eb65f35f4
 # ╠═╡ show_logs = false
-asf = ingredients("../../../src/LaserLab.jl")
+asf = ingredients("../src/autostepfinder.jl")
 
 # ╔═╡ d3da2ac5-df51-4d7e-99f5-039595f6f75e
 PlutoUI.TableOfContents(title="AutoStepfinder Notebook", indent=true)
@@ -70,20 +89,20 @@ path_free = "/Users/pabloherrero/DIPC Dropbox/BOLD/Data1/ZFFL62_NAPH3_5e-8M/Micr
 
 # ╔═╡ f94daecf-afda-4b61-a5d1-3ae48c035480
 begin
-	img = asf.LaserLab.get_image(path_free, 23)
+	img = asf.autostepfinder.get_image(path_free, 23)
 	heatmap(img)
 end
 
 # ╔═╡ 12b432f4-5942-4958-9de8-473a08c364a5
 begin
 	roi1 = [190,290,300,400]
-	evol = asf.LaserLab.temporal_evolution(path_free, 400, roi1);
+	evol = asf.autostepfinder.temporal_evolution(path_free, 400, roi1);
 	nothing
 end
 
 # ╔═╡ 10b8263d-8dc5-4ddc-bd21-b310ac7fe11b
 begin 
-	imroi = asf.LaserLab.get_image(path_free, 23)[roi1[1]:roi1[2],roi1[3]:roi1[4]]
+	imroi = asf.autostepfinder.get_image(path_free, 23)[roi1[1]:roi1[2],roi1[3]:roi1[4]]
 	gr()
 	#c = cgrad([:red,:yellow,:green], [0.01, 0.9995], categorical = true)
 
@@ -111,7 +130,7 @@ path_ba = "/Users/pabloherrero/DIPC Dropbox/BOLD/Data1/tempo_for_Mikel/commercia
 
 # ╔═╡ 5954a7be-70c1-4d23-b4c2-719f23220212
 begin
-	imgba = asf.LaserLab.get_image(path_ba, 23)
+	imgba = asf.autostepfinder.get_image(path_ba, 23)
 	heatmap(imgba,  clim=(1800,2500))
 end
 
@@ -121,13 +140,13 @@ roi1
 # ╔═╡ efc103b6-8695-4daf-9647-2fd1baafc8c8
 begin
 	roiba = [200,300,200,300]
-	evol_ba = asf.LaserLab.temporal_evolution(path_ba, 400, roi1);
+	evol_ba = asf.autostepfinder.temporal_evolution(path_ba, 400, roi1);
 	nothing
 end
 
 # ╔═╡ 9d28bc4a-1bcf-44ce-9429-2bc74e17f9ac
 begin 
-	imroiba = asf.LaserLab.get_image(path_ba, 2)[roiba[1]:roiba[2],roiba[3]:roiba[4]]
+	imroiba = asf.autostepfinder.get_image(path_ba, 2)[roiba[1]:roiba[2],roiba[3]:roiba[4]]
 	gr()
 	#c = cgrad([:red,:yellow,:green], [0.01, 0.9995], categorical = true)
 
@@ -164,7 +183,7 @@ function get_hist_roi(evol, tresH = 0.1, N_iter = 50)
 			dataX = evol[ i, j, :]
 			
 			
-			S_curve, best_shots, Fits, steptable = asf.LaserLab.AutoStepMain(dataX, tresH, N_iter)
+			S_curve, best_shots, Fits, steptable = asf.autostepfinder.AutoStepMain(dataX, tresH, N_iter)
 			
 	            if best_shots > 0 && S_curve[best_shots] > tresH 
 
@@ -207,7 +226,7 @@ md""" Select pixel: $(@bind ijview NumberField(1:size(ijy)[1], default=1))"""
 # ╔═╡ 9a6e62bb-289e-4ca7-9f95-cd0caaac7700
 begin
 	pxi, pxj = ijy[ijview, :]
-	asf.LaserLab.plot_pixel(evol, pxi, pxj, tresH)
+	asf.autostepfinder.plot_pixel(evol, pxi, pxj, tresH)
 end
 
 # ╔═╡ bd1320fb-91d1-448c-be04-f60807e96ba0
@@ -246,11 +265,13 @@ begin
 end
 
 # ╔═╡ Cell order:
-# ╠═cce4b21e-81e7-4e6c-ad7c-014f9f1d72ea
 # ╠═ac949aea-be3f-404d-8a8b-22c25b26ee38
 # ╠═980dcf83-1e5c-4559-a42b-b02b0db094b3
-# ╟─ee654cd8-b63a-4e5e-96f8-3104bea4fa60
-# ╟─933774f1-9a00-4ee0-98e0-980f9e8fb930
+# ╠═a03bd74c-dc79-4f88-a142-815a6e94954c
+# ╠═ee654cd8-b63a-4e5e-96f8-3104bea4fa60
+# ╠═16cbcb03-5dc5-4219-8337-c3024d805338
+# ╠═d09a5620-570a-4f16-9e0d-f24fb6ba1fbc
+# ╠═933774f1-9a00-4ee0-98e0-980f9e8fb930
 # ╠═c22c5abe-980b-11ee-268c-b16eb65f35f4
 # ╠═99ea72eb-b944-4d2a-9347-f4d9255ac790
 # ╠═d3da2ac5-df51-4d7e-99f5-039595f6f75e
