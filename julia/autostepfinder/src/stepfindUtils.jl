@@ -27,14 +27,26 @@ function AutoStepMain(dataX, tresH = 0.15, N_iter = 100)
 end
 
 
-function plot_pixel(evol, i, j, tresH=0.1, N_iter=50)
+function plot_pixel(evol, i, j, img, tresH=0.1, N_iter=50, )
 	dataX = evol[ i, j, :]
-	S_curve, best_shots, Fits, steptable = AutoStepMain(dataX, tresH, N_iter)
+	S_curve, best_shots, Fits, steptable = asf.autostepfinder.AutoStepMain(dataX, tresH, N_iter)
 	p1 = plot(dataX, label = "Data pixel ($i,$j)")
 	plot!(Fits, label = "AutoStepFinder fit")
 
 	p2 = plot(S_curve)
-	plot(p1, p2)
+	p2 = heatmap(img,colorbar=false, c=:grays)# xaxis=false, yaxis=false, )
+
+	x_start = i - 2
+	x_end = i + 2
+	y_start = j - 2
+	y_end = j + 2
+	
+	# Draw a rectangle on top of the heatmap using Shape
+	plot!([x_start, x_end, x_end, x_start, x_start], [y_start, y_start, y_end, y_end, y_start],
+	    seriestype = :shape, linecolor = :blue, fillalpha = 0., linealpha = 1.0, linewidth = 4, label="Pixel")
+		
+	ppx = plot(p1, p2)
+	return ppx
 end
 
 function get_hist_roi(evol, tresH = 0.1, N_iter = 50)
@@ -50,15 +62,15 @@ function get_hist_roi(evol, tresH = 0.1, N_iter = 50)
 			dataX = evol[ i, j, :]
 			
 			
-			S_curve, best_shots, Fits, steptable = asf.LaserLab.AutoStepMain(dataX, tresH, N_iter)
+			S_curve, best_shots, Fits, steptable = AutoStepMain(dataX, tresH, N_iter)
 			
 	            if best_shots > 0 && S_curve[best_shots] > tresH 
 
 					LST = size(steptable)[1]
 					if LST > 2
 						push!(n_steps, size(steptable, 1))
-						push!(hist_height, steptable[1:LST-2, 4])
-						push!(hist_widths, steptable[1:LST-2, 5])
+						push!(hist_height, steptable[1:LST, 4])
+						push!(hist_widths, cumsum(steptable[1:LST, 5]))
 						
 						ijyes = [ijyes;  [i j]]
 						

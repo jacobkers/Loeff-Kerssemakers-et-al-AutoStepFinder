@@ -102,7 +102,7 @@ function fit2Steps(dataX, FitX)
     ixes = vcat([0], ixes0, [Lx])
     steptable = zeros(Float64, Lix, 8)
 	
-    for ii in 2:Lix-1
+    for ii in 2:Lix+1
         ix_pre = ixes[ii - 1] + 1
         ix = ixes[ii]
         ix_aft = ixes[ii + 1]
